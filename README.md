@@ -13,18 +13,11 @@ This project explores different implementations of neural networks for playing g
    - **Tic-Tac-Toe** - A demonstration of AlphaGo-like techniques applied to Tic-Tac-Toe
    - **RPS Card Game** - A strategic card game combining Rock Paper Scissors with board placement
 
-## Features
+## Project Organization
 
-- Neural network implementations with various architectures
-- Multiple reinforcement learning approaches:
-  - PPO (Proximal Policy Optimization) for the standard RPS implementations
-  - AlphaGo-style MCTS (Monte Carlo Tree Search) with neural networks for board games
-- Game environments with state tracking
-- Standardized output format for comparing model performance
-- Visualization of network architecture, weights, and training progress
-- Demonstration games showing the neural networks' learned strategies
+The project consists of multiple independent implementations with some integration points:
 
-## Project Structure
+### Top-Level Structure
 
 ```
 .
@@ -32,10 +25,48 @@ This project explores different implementations of neural networks for playing g
 ├── cpp_implementation/        # Simplified C++ demonstration plus full implementation
 ├── golang_implementation/     # Go implementation with improved architecture
 ├── alphago_demo/              # AlphaGo-style implementations (Tic-Tac-Toe and RPS Card Game)
-├── scripts/                   # Shell scripts for running tests and demos
-├── output/                    # Training output and visualizations
-├── shared_output_format.md    # Specification for standardized output format
+├── output/                    # Shared output directory for all implementations
+└── Makefile                   # Top-level makefile with convenience commands for all implementations
 ```
+
+### Implementation Relationships
+
+- The **golang_implementation** and **alphago_demo** packages can interact with each other:
+  - The AlphaGo agent from alphago_demo can be used in golang_implementation tournaments
+  - Both implement different approaches to the RPS game but share common interfaces
+
+### Running Commands
+
+The top-level Makefile provides simplified commands for common tasks. Each implementation also has its own Makefile for more detailed operations.
+
+```bash
+# Build all implementations
+make build
+
+# Run specific implementations
+make run-legacy-cpp
+make run-cpp
+make run-go
+make run-alphago-ttt
+make run-alphago-rps
+
+# AlphaGo-specific tasks
+make alphago-train       # Train AlphaGo RPS models
+make alphago-tournament  # Compare different AlphaGo models
+
+# Golang-specific tasks
+make golang-tournament   # Run tournaments between agents
+make golang-vs-alphago   # Compare Golang and AlphaGo agents
+```
+
+## Features
+
+- Neural network implementations with various architectures:
+  - PPO (Proximal Policy Optimization) in the golang_implementation
+  - AlphaGo-style MCTS (Monte Carlo Tree Search) with neural networks in alphago_demo
+- Game environments with state tracking
+- Tournament systems for comparing agent performance
+- Comprehensive testing and documentation
 
 ## Requirements
 
@@ -45,66 +76,6 @@ This project explores different implementations of neural networks for playing g
   - On macOS: `brew install eigen`
   - On Ubuntu: `apt-get install libeigen3-dev`
   - On Windows: Download from http://eigen.tuxfamily.org/
-
-## Building and Running
-
-Use the provided Makefile to build and run the different implementations:
-
-```bash
-# Build all implementations
-make build
-
-# Run the Legacy C++ implementation (complete neural network)
-make run-legacy-cpp
-
-# Run the simplified C++ demo
-make run-cpp
-
-# Run the full C++ neural implementation (similar to legacy but different architecture)
-make run-cpp-full
-
-# Run the Golang implementation
-make run-go
-
-# Run the AlphaGo Tic-Tac-Toe demo
-make run-alphago
-
-# Run the AlphaGo RPS Card Game demo
-make run-alphago-rps
-```
-
-Or use the scripts/build_all.sh script to build and run all implementations in sequence:
-
-```bash
-./scripts/build_all.sh
-```
-
-## Running Demos and Comparing Output
-
-Each implementation can generate standardized output to compare their approaches:
-
-```bash
-# Run all demos and generate output files
-make run-demos
-```
-
-This will:
-1. Build all implementations
-2. Run a demo of each implementation
-3. Generate output files in the output directory:
-   - `output/legacy_cpp_demo_output.txt` - Original C++ implementation output
-   - `output/cpp_demo_output.txt` - Simplified C++ demo output
-   - `output/go_demo_output.txt` - Golang implementation output
-   - `output/alphago_demo_output.txt` - AlphaGo Tic-Tac-Toe demo output
-   - `output/alphago_rps_demo_output.txt` - AlphaGo RPS Card Game demo output
-
-These files can be compared to understand the differences in how each implementation:
-- Represents the game state
-- Trains the neural network
-- Makes predictions
-- Visualizes the model and training process
-
-For details on the output format, see [shared_output_format.md](shared_output_format.md).
 
 ## Installation
 
@@ -116,27 +87,18 @@ cd neural_rps
 
 2. Install dependencies:
 ```bash
-# For the Golang implementation
-cd golang_implementation && go mod tidy
-
-# For the AlphaGo demos
-cd alphago_demo && go mod tidy
-
-# For the C++ implementations (if you're on macOS)
-brew install eigen
+# Install all dependencies
+make install-deps
 ```
 
-## Implementation Comparison
+## Implementation Details
 
-Here's a quick comparison of the different implementations:
+Each implementation has its own README with more detailed information:
 
-| Implementation | Language | Architecture | Training Method | Features |
-|----------------|----------|--------------|----------------|----------|
-| Legacy C++ | C++17 | Modular with separate header/source files | PPO | Original neural network with complete game logic |
-| C++ Demo | C++17 | Combined header files | Simplified | Demonstration version and full implementation |
-| Golang | Go 1.16+ | Modular packages | PPO | Improved architecture and performance |
-| AlphaGo Tic-Tac-Toe | Go 1.16+ | AlphaGo-inspired | MCTS + Neural Network | Tic-Tac-Toe with Monte Carlo Tree Search |
-| AlphaGo RPS Card Game | Go 1.16+ | AlphaGo-inspired | MCTS + Neural Network | Card game combining RPS with board placement |
+- [Legacy C++ Implementation](legacy_cpp_implementation/README.md)
+- [C++ Implementation](cpp_implementation/README.md)
+- [Golang Implementation](golang_implementation/README.md)
+- [AlphaGo Demos](alphago_demo/README.md)
 
 ## Game Descriptions
 
@@ -148,17 +110,6 @@ A strategic card game where players place Rock, Paper, or Scissors cards on a 3�
 
 ### Tic-Tac-Toe
 The classic game where players take turns placing X or O on a 3×3 grid, trying to get three in a row. This implementation demonstrates AlphaGo-style techniques with Monte Carlo Tree Search.
-
-## Implementation Details
-
-Each implementation has its own README in its respective directory with more detailed information:
-
-- [Legacy C++ Implementation](legacy_cpp_implementation/README.md) - Original implementation with complete neural network
-- [C++ Implementation](cpp_implementation/README.md) - Simplified version and full implementation
-- [Golang Implementation](golang_implementation/README.md) - Go-based implementation with improved architecture
-- [AlphaGo Demos](alphago_demo/README.md) - Demonstrations of AlphaGo techniques for Tic-Tac-Toe
-- [RPS Card Game](alphago_demo/RPS_README.md) - AlphaGo-style implementation of the RPS card game
-- [Neural Network Models](MODELS_README.md) - Training methodology and model comparison for RPS
 
 ## License
 

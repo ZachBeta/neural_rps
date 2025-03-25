@@ -1,4 +1,4 @@
-.PHONY: build run test test-coverage clean tournament tournament-verbose
+.PHONY: build run test test-coverage clean tournament tournament-verbose alphago-vs-alphago alphago-vs-alphago-verbose
 
 # Build the project
 build:
@@ -49,4 +49,20 @@ tournament-verbose:
 	@go build -o bin/tournament cmd/tournament/main.go
 	@echo "Running tournament (verbose mode)..."
 	@./bin/tournament --games 10 --alphago-sims 300 --ppo-hidden 128 --verbose
+	@echo "Tournament complete!"
+
+# AlphaGo vs AlphaGo tournament
+alphago-vs-alphago:
+	@mkdir -p bin
+	@go build -o bin/alphago_vs_alphago cmd/alphago_vs_alphago/main.go
+	@echo "Running tournament between small and large AlphaGo agents..."
+	@./bin/alphago_vs_alphago --games 50 --small-sims 100 --large-sims 300 --small-exploration 1.0 --large-exploration 1.5
+	@echo "Tournament complete!"
+
+# AlphaGo vs AlphaGo tournament (verbose)
+alphago-vs-alphago-verbose:
+	@mkdir -p bin
+	@go build -o bin/alphago_vs_alphago cmd/alphago_vs_alphago/main.go
+	@echo "Running tournament between small and large AlphaGo agents (verbose mode)..."
+	@./bin/alphago_vs_alphago --games 10 --small-sims 100 --large-sims 300 --small-exploration 1.0 --large-exploration 1.5 --verbose
 	@echo "Tournament complete!" 
