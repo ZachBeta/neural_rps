@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
@@ -40,7 +41,15 @@ func main() {
 	// Parse command line flags
 	smallRun := flag.Bool("small-run", false, "Run with reduced parameters for quick testing")
 	parallel := flag.Bool("parallel", false, "Use parallel execution for training")
+	optimizeThreads := flag.Bool("optimize-threads", false, "Find optimal thread count for current hardware")
+	threads := flag.Int("threads", 0, "Specific number of threads to use (0 = auto)")
 	flag.Parse()
+
+	// Handle thread optimization if requested
+	if *optimizeThreads {
+		findOptimalThreadCount()
+		return
+	}
 
 	// Adjust parameters for small test runs
 	m1Games := model1SelfPlayGames
@@ -71,12 +80,12 @@ func main() {
 	// Initialize neural networks for model 1 (smaller network, fewer games)
 	fmt.Println("=== Training Model 1 (Small Network) ===")
 	policy1, value1 := trainModel("output/rps_policy1.model", "output/rps_value1.model",
-		m1Games, m1Epochs, model1HiddenSize, *parallel)
+		m1Games, m1Epochs, model1HiddenSize, *parallel, *threads)
 
 	// Initialize neural networks for model 2 (larger network, more games)
 	fmt.Println("\n=== Training Model 2 (Large Network) ===")
 	policy2, value2 := trainModel("output/rps_policy2.model", "output/rps_value2.model",
-		m2Games, m2Epochs, model2HiddenSize, *parallel)
+		m2Games, m2Epochs, model2HiddenSize, *parallel, *threads)
 
 	// Extract model names from saved paths for agent naming
 	model1Name := fmt.Sprintf("H%d-G%d-E%d-S%d-X%.1f",
@@ -182,7 +191,7 @@ func calculatePValue(wins1, wins2, total int) float64 {
 }
 
 // trainModel trains a policy and value network with self-play
-func trainModel(policyPath, valuePath string, selfPlayGames, epochs, hiddenSize int, forceParallel bool) (*neural.RPSPolicyNetwork, *neural.RPSValueNetwork) {
+func trainModel(policyPath, valuePath string, selfPlayGames, epochs, hiddenSize int, forceParallel bool, threads int) (*neural.RPSPolicyNetwork, *neural.RPSValueNetwork) {
 	// Get timestamp for model naming
 	timestamp := time.Now().Format("20060102-150405")
 
@@ -206,6 +215,7 @@ func trainModel(policyPath, valuePath string, selfPlayGames, epochs, hiddenSize 
 	selfPlayParams.DeckSize = deckSize
 	selfPlayParams.HandSize = handSize
 	selfPlayParams.MaxRounds = maxRounds
+	selfPlayParams.NumThreads = threads
 
 	// Force parallel execution if requested
 	if forceParallel {
@@ -216,6 +226,13 @@ func trainModel(policyPath, valuePath string, selfPlayGames, epochs, hiddenSize 
 		}
 		selfPlayParams.ForceParallel = true
 		fmt.Println("Forced parallel execution enabled")
+
+		// Print thread information
+		if threads > 0 {
+			fmt.Printf("Using %d worker threads as specified\n", threads)
+		} else {
+			fmt.Printf("Using auto thread selection (up to %d workers)\n", runtime.NumCPU()-1)
+		}
 	}
 
 	// Print MCTS simulation parameters
@@ -493,4 +510,103 @@ func runTournament(agent1, agent2 *AlphaGoAgent, numGames int) (agent1Wins, agen
 	}
 
 	return agent1Wins, agent2Wins, draws
+}
+
+// findOptimalThreadCount determines the optimal number of threads for the current hardware
+func findOptimalThreadCount() {
+	fmt.Println("Finding optimal thread count for your hardware...")
+	fmt.Printf("CPU cores available: %d\n", runtime.NumCPU())
+
+	// Create test parameters
+	const testGames = 50
+	const hiddenSize = 64
+	const maxWorkers = 32 // Don't test beyond 32 threads
+
+	// Create output file
+	resultsFile, err := os.Create("output/thread_optimization.txt")
+	if err != nil {
+		log.Fatalf("Failed to create results file: %v", err)
+	}
+	defer resultsFile.Close()
+
+	// Write header
+	fmt.Fprintf(resultsFile, "Thread Count,Games Per Second,Speedup Factor\n")
+
+	// Initialize base networks for testing
+	policyNetwork := neural.NewRPSPolicyNetwork(hiddenSize)
+	valueNetwork := neural.NewRPSValueNetwork(hiddenSize)
+
+	// Run tests with varying thread counts
+	var baselineSpeed float64
+	var bestThreads int
+	var bestSpeed float64
+
+	// Test thread counts from 1 to min(maxWorkers, numCPU*2)
+	maxTestThreads := runtime.NumCPU() * 2
+	if maxTestThreads > maxWorkers {
+		maxTestThreads = maxWorkers
+	}
+
+	fmt.Println("\nTesting performance with different thread counts:")
+	fmt.Println("------------------------------------------------")
+
+	for threads := 1; threads <= maxTestThreads; threads++ {
+		// Configure parameters
+		selfPlayParams := training.DefaultRPSSelfPlayParams()
+		selfPlayParams.NumGames = testGames
+		selfPlayParams.ForceParallel = threads > 1
+
+		// Set thread count in global runtime
+		originalMaxProcs := runtime.GOMAXPROCS(0)
+		runtime.GOMAXPROCS(threads)
+
+		// Create self-play instance
+		selfPlay := training.NewRPSSelfPlay(policyNetwork, valueNetwork, selfPlayParams)
+
+		// Measure performance
+		start := time.Now()
+		selfPlay.GenerateGames(false)
+		elapsed := time.Since(start)
+
+		// Calculate metrics
+		gamesPerSecond := float64(testGames) / elapsed.Seconds()
+		speedupFactor := 1.0
+
+		if threads == 1 {
+			baselineSpeed = gamesPerSecond
+		} else {
+			speedupFactor = gamesPerSecond / baselineSpeed
+		}
+
+		// Update best if applicable
+		if gamesPerSecond > bestSpeed {
+			bestSpeed = gamesPerSecond
+			bestThreads = threads
+		}
+
+		// Print and save results
+		fmt.Printf("Threads: %2d | Games/sec: %6.2f | Speedup: %5.2fx\n",
+			threads, gamesPerSecond, speedupFactor)
+		fmt.Fprintf(resultsFile, "%d,%.2f,%.2f\n",
+			threads, gamesPerSecond, speedupFactor)
+
+		// Reset max procs to original value
+		runtime.GOMAXPROCS(originalMaxProcs)
+	}
+
+	// Print recommendation
+	fmt.Println("\nResults:")
+	fmt.Printf("Optimal thread count for your hardware: %d threads\n", bestThreads)
+	fmt.Printf("Peak performance: %.2f games/second\n", bestSpeed)
+	fmt.Printf("Maximum speedup: %.2fx over single-threaded execution\n", bestSpeed/baselineSpeed)
+
+	if bestThreads == runtime.NumCPU() {
+		fmt.Println("Recommendation: Use default parallel execution for optimal performance")
+	} else if bestThreads < runtime.NumCPU() {
+		fmt.Printf("Recommendation: Use %d threads for optimal performance (fewer than CPU cores)\n", bestThreads)
+	} else {
+		fmt.Printf("Recommendation: Use %d threads for optimal performance (more than CPU cores)\n", bestThreads)
+	}
+
+	fmt.Printf("\nDetailed results saved to output/thread_optimization.txt\n")
 }

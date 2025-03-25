@@ -27,6 +27,7 @@ type RPSSelfPlayParams struct {
 	MaxRounds     int
 	MCTSParams    mcts.RPSMCTSParams
 	ForceParallel bool // Force parallel execution regardless of game count
+	NumThreads    int  // Specific number of threads to use (0 = auto)
 }
 
 // DefaultRPSSelfPlayParams returns default self-play parameters
@@ -38,6 +39,7 @@ func DefaultRPSSelfPlayParams() RPSSelfPlayParams {
 		MaxRounds:     10,
 		MCTSParams:    mcts.DefaultRPSMCTSParams(),
 		ForceParallel: false,
+		NumThreads:    0, // Auto-select thread count
 	}
 }
 
@@ -123,6 +125,11 @@ func (sp *RPSSelfPlay) generateGamesParallel(verbose bool) []RPSTrainingExample 
 	numWorkers := runtime.NumCPU() - 1
 	if numWorkers < 1 {
 		numWorkers = 1
+	}
+
+	// Use explicit thread count if specified
+	if sp.params.NumThreads > 0 {
+		numWorkers = sp.params.NumThreads
 	}
 
 	// Create a buffered channel for game examples

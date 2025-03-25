@@ -1,5 +1,5 @@
 .PHONY: build test train compare play play-interactive quick-train clean \
-	train-parallel tournament-elo profile-train
+	train-parallel tournament-elo profile-train train-optimal quick-train-optimal
 
 # Build all AlphaGo binaries
 build:
@@ -46,6 +46,20 @@ quick-train-parallel: build
 	@./bin/train_models --small-run --parallel
 	@echo "Models saved to output/ directory"
 
+# Train AlphaGo models using optimized thread count (8 threads as determined by optimization)
+train-optimal: build
+	@echo "Training AlphaGo models with optimal thread count (8 threads)..."
+	@mkdir -p output
+	@./bin/train_models --parallel --threads 8
+	@echo "Models saved to output/ directory"
+
+# Train AlphaGo models with reduced parameters using optimal thread count
+quick-train-optimal: build
+	@echo "Quick training AlphaGo models with optimal thread count (8 threads)..."
+	@mkdir -p output
+	@./bin/train_models --small-run --parallel --threads 8
+	@echo "Models saved to output/ directory"
+
 # Compare AlphaGo models
 compare: build
 	@echo "Comparing AlphaGo models..."
@@ -61,6 +75,7 @@ tournament-elo: build
 # Optimize thread count for your hardware
 optimize-threads: build
 	@echo "Finding optimal thread count for your hardware..."
+	@mkdir -p output
 	@./bin/train_models --optimize-threads
 	@echo "Optimization complete, results in output/thread_optimization.txt"
 
