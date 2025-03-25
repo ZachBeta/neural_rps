@@ -18,22 +18,25 @@ std::vector<int> getValidActions(const Environment& env) {
 }
 
 // Function to print game state
-void printGameState(const Environment& env, const PPOAgent& agent) {
+void printGameState(const Environment& env, const PPOAgent& agent, bool to_file = false) {
     Eigen::VectorXd state = env.getState();
     Eigen::VectorXd probs = agent.getPolicyProbs(state);
     
     std::vector<std::string> action_labels = {"Warrior", "Mage", "Archer"};
-    NetworkVisualizer::visualizeActionProbs(probs, action_labels);
+    NetworkVisualizer::visualizeActionProbs(probs, action_labels, to_file);
 }
 
 int main() {
+    // Initialize file output
+    NetworkVisualizer::initFileOutput();
+    
     Environment env;
     PPOAgent agent(9, 3);  // 9 state dimensions, 3 actions
     
     // Visualize network architecture
     std::vector<int> layer_sizes = {9, 3};  // Input layer and output layer
     std::vector<std::string> layer_names = {"Input", "Output"};
-    NetworkVisualizer::visualizeArchitecture(layer_sizes, layer_names);
+    NetworkVisualizer::visualizeArchitecture(layer_sizes, layer_names, true);
     
     const int num_episodes = 1000;
     const int episodes_per_update = 10;
@@ -47,6 +50,7 @@ int main() {
     float total_reward = 0.0f;
     
     std::cout << "Starting training...\n";
+    NetworkVisualizer::getOutputFile() << "Starting training...\n";
     
     // Visualize initial weights
     std::vector<std::string> input_labels = {
@@ -55,7 +59,7 @@ int main() {
         "OppW", "OppM", "OppA"
     };
     std::vector<std::string> output_labels = {"Warrior", "Mage", "Archer"};
-    NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels);
+    NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels, true);
     
     for (int episode = 0; episode < num_episodes; episode++) {
         env.reset();
@@ -81,7 +85,7 @@ int main() {
             
             // Visualize every 100 episodes
             if (episode % 100 == 0) {
-                printGameState(env, agent);
+                printGameState(env, agent, true);
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
             }
             
@@ -102,11 +106,13 @@ int main() {
             float avg_reward = total_reward / episodes_per_update;
             std::cout << "Episode " << episode + 1 << ", Average Reward: "
                       << std::fixed << std::setprecision(3) << avg_reward << "\n";
+            NetworkVisualizer::getOutputFile() << "Episode " << episode + 1 << ", Average Reward: "
+                                              << std::fixed << std::setprecision(3) << avg_reward << "\n";
             
             // Visualize weights and training progress
             if ((episode + 1) % 100 == 0) {
-                NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels);
-                NetworkVisualizer::visualizeTrainingProgress(episode_rewards);
+                NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels, true);
+                NetworkVisualizer::visualizeTrainingProgress(episode_rewards, 100, true);
             }
             
             total_reward = 0.0f;
@@ -114,34 +120,43 @@ int main() {
     }
     
     std::cout << "\nTraining completed!\n";
+    NetworkVisualizer::getOutputFile() << "\nTraining completed!\n";
     
     // Final visualization of weights and training progress
-    NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels);
-    NetworkVisualizer::visualizeTrainingProgress(episode_rewards);
+    NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels, true);
+    NetworkVisualizer::visualizeTrainingProgress(episode_rewards, 100, true);
     
     // Play a few games to demonstrate learned behavior
     std::cout << "\nPlaying demonstration games...\n";
+    NetworkVisualizer::getOutputFile() << "\nPlaying demonstration games...\n";
+    
     for (int i = 0; i < 3; i++) {
         env.reset();
         std::cout << "\nGame " << i + 1 << ":\n";
+        NetworkVisualizer::getOutputFile() << "\nGame " << i + 1 << ":\n";
         
         while (true) {
             Eigen::VectorXd state = env.getState();
             std::vector<int> valid_actions = getValidActions(env);
             
-            printGameState(env, agent);
+            printGameState(env, agent, true);
             
             int action = agent.sampleAction(state, valid_actions);
             auto [reward, done] = env.step(action);
             
-            std::cout << "Agent played: " << Card(static_cast<CardType>(action)).getName()
-                      << ", Reward: " << reward << "\n";
+            std::string move = "Agent played: " + Card(static_cast<CardType>(action)).getName() +
+                              ", Reward: " + std::to_string(reward) + "\n";
+            std::cout << move;
+            NetworkVisualizer::getOutputFile() << move;
             
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             
             if (done) break;
         }
     }
+    
+    // Close file output
+    NetworkVisualizer::closeFileOutput();
     
     return 0;
 } 

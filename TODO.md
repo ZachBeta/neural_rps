@@ -1,3 +1,4 @@
+* migrate this to golang so it's easier to read and has a more ergonomic dev/build/test setup
 * visualize neural network
 * fix build warnings
 * hands need to be more complex

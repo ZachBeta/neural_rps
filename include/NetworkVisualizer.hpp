@@ -5,59 +5,76 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <filesystem>
 
 class NetworkVisualizer {
 public:
+    // Add file output stream
+    static std::ofstream& getOutputFile() {
+        static std::ofstream file("build/training_demo.txt");
+        return file;
+    }
+
     // Visualize weight matrix with labels
     static void visualizeWeights(const Eigen::MatrixXd& weights,
                                const std::vector<std::string>& input_labels,
-                               const std::vector<std::string>& output_labels) {
-        std::cout << "\nWeight Matrix Visualization:\n";
-        std::cout << "Input features: " << input_labels.size() << ", Output features: " << output_labels.size() << "\n\n";
+                               const std::vector<std::string>& output_labels,
+                               bool to_file = false) {
+        std::ostream& out = to_file ? getOutputFile() : std::cout;
+        
+        out << "\nWeight Matrix Visualization:\n";
+        out << "Input features: " << input_labels.size() << ", Output features: " << output_labels.size() << "\n\n";
 
         // Print column headers (input labels)
-        std::cout << std::setw(12) << " ";
+        out << std::setw(12) << " ";
         for (const auto& label : input_labels) {
-            std::cout << std::setw(8) << label;
+            out << std::setw(8) << label;
         }
-        std::cout << "\n";
+        out << "\n";
 
         // Print separator
-        std::cout << std::string(12 + input_labels.size() * 8, '-') << "\n";
+        out << std::string(12 + input_labels.size() * 8, '-') << "\n";
 
         // Print weights with row labels
         for (int i = 0; i < weights.rows(); ++i) {
-            std::cout << std::setw(10) << output_labels[i] << " |";
+            out << std::setw(10) << output_labels[i] << " |";
             for (int j = 0; j < weights.cols(); ++j) {
-                std::cout << std::setw(8) << std::fixed << std::setprecision(3) << weights(i, j);
+                out << std::setw(8) << std::fixed << std::setprecision(3) << weights(i, j);
             }
-            std::cout << "\n";
+            out << "\n";
         }
-        std::cout << "\n";
+        out << "\n";
     }
 
     // Visualize action probabilities
     static void visualizeActionProbs(const Eigen::VectorXd& probs,
-                                   const std::vector<std::string>& action_labels) {
-        std::cout << "\nAction Probabilities:\n";
-        std::cout << std::string(40, '-') << "\n";
+                                   const std::vector<std::string>& action_labels,
+                                   bool to_file = false) {
+        std::ostream& out = to_file ? getOutputFile() : std::cout;
+        
+        out << "\nAction Probabilities:\n";
+        out << std::string(40, '-') << "\n";
 
         for (int i = 0; i < probs.size(); ++i) {
-            std::cout << std::setw(10) << action_labels[i] << " |";
+            out << std::setw(10) << action_labels[i] << " |";
             
             // Create probability bar
             int bar_length = static_cast<int>(probs(i) * 30);
-            std::cout << " " << std::fixed << std::setprecision(3) << probs(i) << " ";
-            std::cout << std::string(bar_length, '#') << "\n";
+            out << " " << std::fixed << std::setprecision(3) << probs(i) << " ";
+            out << std::string(bar_length, '#') << "\n";
         }
-        std::cout << "\n";
+        out << "\n";
     }
 
     // Visualize network architecture
     static void visualizeArchitecture(const std::vector<int>& layer_sizes,
-                                    const std::vector<std::string>& layer_names) {
-        std::cout << "\nNetwork Architecture:\n";
-        std::cout << std::string(50, '=') << "\n";
+                                    const std::vector<std::string>& layer_names,
+                                    bool to_file = false) {
+        std::ostream& out = to_file ? getOutputFile() : std::cout;
+        
+        out << "\nNetwork Architecture:\n";
+        out << std::string(50, '=') << "\n";
 
         int max_layer_size = *std::max_element(layer_sizes.begin(), layer_sizes.end());
         int max_height = max_layer_size * 2 + 1;
@@ -69,28 +86,31 @@ public:
                 int end = start + layer_size * 2;
 
                 if (h >= start && h < end && (h - start) % 2 == 0) {
-                    std::cout << " (O) ";
+                    out << " (O) ";
                 } else if (h == max_height - 1) {
-                    std::cout << std::setw(5) << layer_names[l];
+                    out << std::setw(5) << layer_names[l];
                 } else {
-                    std::cout << "     ";
+                    out << "     ";
                 }
 
                 // Add connecting lines between layers
                 if (l < layer_sizes.size() - 1) {
-                    std::cout << "-";
+                    out << "-";
                 }
             }
-            std::cout << "\n";
+            out << "\n";
         }
-        std::cout << std::string(50, '=') << "\n";
+        out << std::string(50, '=') << "\n";
     }
 
     // Track and visualize training progress
     static void visualizeTrainingProgress(const std::vector<float>& rewards,
-                                        int window_size = 100) {
-        std::cout << "\nTraining Progress:\n";
-        std::cout << std::string(50, '=') << "\n";
+                                        int window_size = 100,
+                                        bool to_file = false) {
+        std::ostream& out = to_file ? getOutputFile() : std::cout;
+        
+        out << "\nTraining Progress:\n";
+        out << std::string(50, '=') << "\n";
 
         // Calculate moving average
         std::vector<float> moving_avg;
@@ -111,9 +131,19 @@ public:
         int graph_width = 40;
         for (float avg : moving_avg) {
             int pos = static_cast<int>((avg - min_reward) / range * graph_width);
-            std::cout << std::setw(8) << std::fixed << std::setprecision(2) << avg << " |";
-            std::cout << std::string(pos, '#') << "\n";
+            out << std::setw(8) << std::fixed << std::setprecision(2) << avg << " |";
+            out << std::string(pos, '#') << "\n";
         }
-        std::cout << std::string(50, '=') << "\n";
+        out << std::string(50, '=') << "\n";
+    }
+
+    // Initialize file output
+    static void initFileOutput() {
+        getOutputFile().open("training_demo.txt");
+    }
+
+    // Close file output
+    static void closeFileOutput() {
+        getOutputFile().close();
     }
 }; 
