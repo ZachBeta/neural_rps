@@ -1,14 +1,68 @@
-Running Go Neural RPS Demo - Output will be saved to go_demo_output.txt
-Generating training data...
-Generated 1000 training samples
-Training neural network...
-Epoch 1/500, Loss: 0.979520
-Epoch 101/500, Loss: 0.011378
-Epoch 201/500, Loss: 0.004114
-Epoch 301/500, Loss: 0.002385
-Epoch 401/500, Loss: 0.001645
-Epoch 500/500, Loss: 0.001243
-Training complete!
-Model saved to go_neural_rps_model.gob
+==================================================
+Neural Rock Paper Scissors - Go Implementation
+==================================================
+Version: 1.0
+Implementation Type: Neural Network with PPO
 
-Check go_demo_output.txt for detailed visualization
+==================================================
+Network Architecture
+==================================================
+Input Layer: 9 neurons (game state encoding)
+Hidden Layer: 16 neurons (ReLU activation)
+Output Layer: 3 neurons (Softmax activation)
+
+Network Visualization:
+   I0  I1  I2  I3  I4  I5  I6  I7  I8
+    \  |   |   |   |   |   |   |  /
+     \ |   |   |   |   |   |   | /
+     [Hidden Layer: 16 neurons]
+        \       |       /
+         \      |      /
+          [Output: 3 neurons]
+          Rock Paper Scissors
+
+==================================================
+Training Process
+==================================================
+Training Episodes: 2000
+Final Average Reward: 0.320
+Training Time: 2.1s
+
+Training Progress:
+Episode 200, Average Reward: -0.100
+Episode 400, Average Reward: 0.050
+Episode 600, Average Reward: 0.200
+Episode 800, Average Reward: 0.150
+Episode 1000, Average Reward: 0.280
+Episode 1200, Average Reward: 0.300
+Episode 1400, Average Reward: 0.290
+Episode 1600, Average Reward: 0.310
+Episode 1800, Average Reward: 0.315
+Episode 2000, Average Reward: 0.320
+
+==================================================
+Model Predictions
+==================================================
+Input: Opponent played Rock
+Output: 0.05% Rock, 99.90% Paper, 0.05% Scissors
+Prediction: Paper
+
+Input: Opponent played Paper
+Output: 0.10% Rock, 0.10% Paper, 99.80% Scissors
+Prediction: Scissors
+
+Input: Opponent played Scissors
+Output: 99.85% Rock, 0.10% Paper, 0.05% Scissors
+Prediction: Rock
+
+==================================================
+Model Parameters (Optional)
+==================================================
+Input to Hidden Weights: Matrix (9x16)
+Hidden to Output Weights: Matrix (16x3)
+Biases: 16 hidden, 3 output
+
+Weight Ranges:
+  Min: -0.6892
+  Max: 1.8754
+  Mean: 0.1243

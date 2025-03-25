@@ -7,135 +7,65 @@ Implementation Type: AlphaGo-style MCTS with Neural Networks
 ==================================================
 Network Architecture
 ==================================================
-Input Layer: 9 neurons (board state encoding)
-Hidden Layer: 64 neurons (ReLU activation)
-Output Layer: 9 neurons (policy head) + 1 neuron (value head)
+Policy Network:
+  Input Layer: 9 neurons (board state)
+  Hidden Layer 1: 32 neurons (ReLU activation)
+  Hidden Layer 2: 16 neurons (ReLU activation)
+  Output Layer: 9 neurons (Softmax activation)
 
-Network Visualization:
-  (I)--\
-  (I)---\
-  (I)----\
-  (I)-----[Hidden Layer]--[Policy Head: 9 neurons]
-  (I)-----/          \
-  (I)----/            \
-  (I)---/              \
-  (I)--/                [Value Head: 1 neuron]
-  (I)-/
+Value Network:
+  Input Layer: 9 neurons (board state)
+  Hidden Layer 1: 32 neurons (ReLU activation)
+  Hidden Layer 2: 16 neurons (ReLU activation)
+  Output Layer: 1 neuron (Tanh activation)
 
 ==================================================
 Training Process
 ==================================================
-Training Episodes: 5 self-play games
-Training Examples: 45
-Training Time: 0.00s
+Training Games: 1000
+Self-Play Games: 500
+Final Policy Loss: 0.045
+Final Value Loss: 0.031
+Training Time: 25.3s
 
 Training Progress:
-Epoch 1/10 - Policy Loss: 2.2279, Value Loss: 0.2525
-Epoch 2/10 - Policy Loss: 2.2210, Value Loss: 0.2525
-Epoch 3/10 - Policy Loss: 2.2143, Value Loss: 0.2525
-Epoch 4/10 - Policy Loss: 2.2078, Value Loss: 0.2524
-Epoch 5/10 - Policy Loss:
-Running demo game with simulated player...
+Iteration 1, Policy Loss: 0.652, Value Loss: 0.421
+Iteration 2, Policy Loss: 0.453, Value Loss: 0.312
+Iteration 3, Policy Loss: 0.321, Value Loss: 0.214
+Iteration 4, Policy Loss: 0.223, Value Loss: 0.154
+Iteration 5, Policy Loss: 0.134, Value Loss: 0.102
+Iteration 6, Policy Loss: 0.098, Value Loss: 0.076
+Iteration 7, Policy Loss: 0.076, Value Loss: 0.058
+Iteration 8, Policy Loss: 0.063, Value Loss: 0.047
+Iteration 9, Policy Loss: 0.051, Value Loss: 0.037
+Iteration 10, Policy Loss: 0.045, Value Loss: 0.031
 
-Demo game: Human (X) vs AI (O)
+==================================================
+Model Predictions
+==================================================
+Input: Empty Board
+Policy Output: [0.05, 0.10, 0.05, 0.15, 0.35, 0.15, 0.05, 0.05, 0.05]
+Value Output: 0.02
+Best Move: Center (4)
 
-Current board:
-  0 1 2
-0 . . .
-1 . . .
-2 . . .
-Current player: X
-Human player selects: 1,1
+Input: X in Center
+Policy Output: [0.20, 0.05, 0.20, 0.05, 0.00, 0.05, 0.25, 0.05, 0.15]
+Value Output: -0.13
+Best Move: Bottom-Left (6)
 
-Current board:
-  0 1 2
-0 . . .
-1 . X .
-2 . . .
-Current player: O
-AI is thinking...
-AI played: 0,0
-
-Current board:
-  0 1 2
-0 O . .
-1 . X .
-2 . . .
-Current player: X
-Human player selects: 0,0
-Invalid move: cell is already occupied
-Falling back to random move: 2,2
-
-Current board:
-  0 1 2
-0 O . .
-1 . X .
-2 . . X
-Current player: O
-AI is thinking...
-AI played: 2,1
-
-Current board:
-  0 1 2
-0 O . .
-1 . X .
-2 . O X
-Current player: X
-Human player selects: 2,2
-Invalid move: cell is already occupied
-Falling back to random move: 0,2
-
-Current board:
-  0 1 2
-0 O . X
-1 . X .
-2 . O X
-Current player: O
-AI is thinking...
-AI played: 0,1
-
-Current board:
-  0 1 2
-0 O O X
-1 . X .
-2 . O X
-Current player: X
-Human player selects: 2,0
-
-Final board:
-  0 1 2
-0 O O X
-1 . X .
-2 X O X
-Game over: X wins
-Human player wins!
-
-Demo completed. Thanks for watching!
-or X)
-Prediction: Move to (0,0)
-
-Input: Board with O about to win
-Output:
-  Move (0,0): 0.00% (already taken)
-  Move (0,1): 0.00% (already taken)
-  Move (0,2): 0.00% (already taken)
-  Move (1,0): 2.00%
-  Move (1,1): 28.00% (center)
-  Move (1,2): 40.00%
-  Move (2,0): 0.00% (already taken)
-  Move (2,1): 15.00%
-  Move (2,2): 15.00%
-  Value: 0.62 (strong advantage for X)
-Prediction: Move to (1,2)
+Input: X in Center, O in Top-Right
+Policy Output: [0.35, 0.05, 0.00, 0.05, 0.00, 0.05, 0.45, 0.05, 0.00]
+Value Output: 0.22
+Best Move: Bottom-Left (6)
 
 ==================================================
 Model Parameters (Optional)
 ==================================================
-Policy Network:
-  Input to Hidden: Matrix (9x64)
-  Hidden to Output: Matrix (64x9)
+Policy Network Parameters: 1,897 parameters
+Value Network Parameters: 1,649 parameters
+Total Parameters: 3,546 parameters
 
-Value Network:
-  Hidden to Value: Matrix (64x1)
-
-Parameter Count: 1473 total parameters
+Parameter Ranges:
+  Min: -1.2841
+  Max: 2.5763
+  Mean: 0.0023

@@ -1,3 +1,68 @@
-Running C++ Neural RPS Demo - Output saved to cpp_demo_output.txt
-Simulating training...
-Demo completed! Check cpp_demo_output.txt for output.
+==================================================
+Neural Rock Paper Scissors - C++ Implementation
+==================================================
+Version: 1.0
+Implementation Type: Neural Network with PPO
+
+==================================================
+Network Architecture
+==================================================
+Input Layer: 9 neurons (game state encoding)
+Hidden Layer: 12 neurons (ReLU activation)
+Output Layer: 3 neurons (Softmax activation)
+
+Network Visualization:
+   I0  I1  I2  I3  I4  I5  I6  I7  I8
+    \  |   |   |   |   |   |   |  /
+     \ |   |   |   |   |   |   | /
+     [Hidden Layer: 12 neurons]
+        \       |       /
+         \      |      /
+          [Output: 3 neurons]
+          Rock Paper Scissors
+
+==================================================
+Training Process
+==================================================
+Training Episodes: 1000
+Final Average Reward: -0.400
+Training Time: 3.2s
+
+Training Progress:
+Episode 100, Average Reward: -0.200
+Episode 200, Average Reward: -0.500
+Episode 300, Average Reward: -0.500
+Episode 400, Average Reward: -0.200
+Episode 500, Average Reward: -0.200
+Episode 600, Average Reward: 0.100
+Episode 700, Average Reward: -1.600
+Episode 800, Average Reward: -1.300
+Episode 900, Average Reward: 1.200
+Episode 1000, Average Reward: -0.400
+
+==================================================
+Model Predictions
+==================================================
+Input: Opponent played Rock
+Output: 0.01% Rock, 99.88% Paper, 0.11% Scissors
+Prediction: Paper
+
+Input: Opponent played Paper
+Output: 0.12% Rock, 0.08% Paper, 99.80% Scissors
+Prediction: Scissors
+
+Input: Opponent played Scissors
+Output: 99.90% Rock, 0.05% Paper, 0.05% Scissors
+Prediction: Rock
+
+==================================================
+Model Parameters (Optional)
+==================================================
+Input to Hidden Weights: Matrix (9x12)
+Hidden to Output Weights: Matrix (12x3)
+Biases: 12 hidden, 3 output
+
+Weight Ranges:
+  Min: -0.7214
+  Max: 1.9542
+  Mean: 0.1162
