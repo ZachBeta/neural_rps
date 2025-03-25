@@ -1,0 +1,28 @@
+===================================================
+Neural RPS Game Results - cpp Implementation
+Strategy: biased_rock
+===================================================
+Move 1: Opponent played rock, Model played paper → win
+Move 2: Opponent played rock, Model played paper → win
+Move 3: Opponent played rock, Model played paper → win
+Move 4: Opponent played paper, Model played scissors → win
+Move 5: Opponent played scissors, Model played rock → win
+Move 6: Opponent played rock, Model played paper → win
+Move 7: Opponent played rock, Model played paper → win
+Move 8: Opponent played rock, Model played paper → win
+Move 9: Opponent played paper, Model played scissors → win
+Move 10: Opponent played scissors, Model played rock → win
+Move 11: Opponent played rock, Model played paper → win
+Move 12: Opponent played rock, Model played paper → win
+Move 13: Opponent played rock, Model played paper → win
+Move 14: Opponent played paper, Model played scissors → win
+Move 15: Opponent played scissors, Model played rock → win
+
+===================================================
+Game Statistics
+===================================================
+Total Moves: 15
+Wins: 15
+Losses: 0
+Ties: 0
+Win Rate: 100.00%

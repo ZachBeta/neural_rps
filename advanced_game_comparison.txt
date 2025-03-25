@@ -1,0 +1,155 @@
+=========================================
+Advanced Neural RPS Game Comparison
+=========================================
+
+This summary compares the performance of all three implementations
+against different opponent strategies.
+
+
+Strategy: fixed_pattern
+-----------------
+C++ Implementation: Game Statistics
+C++ Implementation: ===================================================
+C++ Implementation: Total Moves: 15
+C++ Implementation: Wins: 15
+C++ Implementation: Losses: 0
+C++ Implementation: Ties: 0
+C++ Implementation: Win Rate: 100.00%
+
+Go Implementation: Game Statistics
+Go Implementation: ===================================================
+Go Implementation: Total Moves: 15
+Go Implementation: Wins: 15
+Go Implementation: Losses: 0
+Go Implementation: Ties: 0
+Go Implementation: Win Rate: 100.00%
+
+Legacy C++ Implementation: Game Statistics
+Legacy C++ Implementation: ===================================================
+Legacy C++ Implementation: Total Moves: 15
+Legacy C++ Implementation: Wins: 15
+Legacy C++ Implementation: Losses: 0
+Legacy C++ Implementation: Ties: 0
+Legacy C++ Implementation: Win Rate: 100.00%
+
+
+Strategy: biased_rock
+-----------------
+C++ Implementation: Game Statistics
+C++ Implementation: ===================================================
+C++ Implementation: Total Moves: 15
+C++ Implementation: Wins: 15
+C++ Implementation: Losses: 0
+C++ Implementation: Ties: 0
+C++ Implementation: Win Rate: 100.00%
+
+Go Implementation: Game Statistics
+Go Implementation: ===================================================
+Go Implementation: Total Moves: 15
+Go Implementation: Wins: 15
+Go Implementation: Losses: 0
+Go Implementation: Ties: 0
+Go Implementation: Win Rate: 100.00%
+
+Legacy C++ Implementation: Game Statistics
+Legacy C++ Implementation: ===================================================
+Legacy C++ Implementation: Total Moves: 15
+Legacy C++ Implementation: Wins: 15
+Legacy C++ Implementation: Losses: 0
+Legacy C++ Implementation: Ties: 0
+Legacy C++ Implementation: Win Rate: 100.00%
+
+
+Strategy: biased_paper
+-----------------
+C++ Implementation: Game Statistics
+C++ Implementation: ===================================================
+C++ Implementation: Total Moves: 15
+C++ Implementation: Wins: 15
+C++ Implementation: Losses: 0
+C++ Implementation: Ties: 0
+C++ Implementation: Win Rate: 100.00%
+
+Go Implementation: Game Statistics
+Go Implementation: ===================================================
+Go Implementation: Total Moves: 15
+Go Implementation: Wins: 15
+Go Implementation: Losses: 0
+Go Implementation: Ties: 0
+Go Implementation: Win Rate: 100.00%
+
+Legacy C++ Implementation: Game Statistics
+Legacy C++ Implementation: ===================================================
+Legacy C++ Implementation: Total Moves: 15
+Legacy C++ Implementation: Wins: 15
+Legacy C++ Implementation: Losses: 0
+Legacy C++ Implementation: Ties: 0
+Legacy C++ Implementation: Win Rate: 100.00%
+
+
+Strategy: biased_scissors
+-----------------
+C++ Implementation: Game Statistics
+C++ Implementation: ===================================================
+C++ Implementation: Total Moves: 15
+C++ Implementation: Wins: 15
+C++ Implementation: Losses: 0
+C++ Implementation: Ties: 0
+C++ Implementation: Win Rate: 100.00%
+
+Go Implementation: Game Statistics
+Go Implementation: ===================================================
+Go Implementation: Total Moves: 15
+Go Implementation: Wins: 15
+Go Implementation: Losses: 0
+Go Implementation: Ties: 0
+Go Implementation: Win Rate: 100.00%
+
+Legacy C++ Implementation: Game Statistics
+Legacy C++ Implementation: ===================================================
+Legacy C++ Implementation: Total Moves: 15
+Legacy C++ Implementation: Wins: 15
+Legacy C++ Implementation: Losses: 0
+Legacy C++ Implementation: Ties: 0
+Legacy C++ Implementation: Win Rate: 100.00%
+
+
+Strategy: mimicking
+-----------------
+C++ Implementation: Game Statistics
+C++ Implementation: ===================================================
+C++ Implementation: Total Moves: 15
+C++ Implementation: Wins: 15
+C++ Implementation: Losses: 0
+C++ Implementation: Ties: 0
+C++ Implementation: Win Rate: 100.00%
+
+Go Implementation: Game Statistics
+Go Implementation: ===================================================
+Go Implementation: Total Moves: 15
+Go Implementation: Wins: 15
+Go Implementation: Losses: 0
+Go Implementation: Ties: 0
+Go Implementation: Win Rate: 100.00%
+
+Legacy C++ Implementation: Game Statistics
+Legacy C++ Implementation: ===================================================
+Legacy C++ Implementation: Total Moves: 15
+Legacy C++ Implementation: Wins: 15
+Legacy C++ Implementation: Losses: 0
+Legacy C++ Implementation: Ties: 0
+Legacy C++ Implementation: Win Rate: 100.00%
+
+Key Observations:
+----------------
+- All models use the optimal counter-strategy against any opponent move
+- Against fixed or biased patterns, all models achieve 100% win rate
+- Against a mimicking opponent, models should establish a winning pattern
+
+Strategy Analysis:
+-----------------
+1. Fixed pattern: The models perfectly counter each move
+2. Biased rock: Models mostly play paper, leading to high win rates
+3. Biased paper: Models mostly play scissors, leading to high win rates
+4. Biased scissors: Models mostly play rock, leading to high win rates
+5. Mimicking: An interesting test of whether the model can escape potential cycles

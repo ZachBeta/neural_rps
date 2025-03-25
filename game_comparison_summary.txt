@@ -1,0 +1,36 @@
+=========================================
+Neural RPS Game Comparison Summary
+=========================================
+
+This summary compares the performance of all three implementations
+against the same sequence of opponent moves.
+
+C++ Implementation: Game Statistics
+C++ Implementation: ===================================================
+C++ Implementation: Total Moves: 10
+C++ Implementation: Wins: 10
+C++ Implementation: Losses: 0
+C++ Implementation: Ties: 0
+C++ Implementation: Win Rate: 100.00%
+
+Go Implementation: Game Statistics
+Go Implementation: ===================================================
+Go Implementation: Total Moves: 10
+Go Implementation: Wins: 10
+Go Implementation: Losses: 0
+Go Implementation: Ties: 0
+Go Implementation: Win Rate: 100.00%
+
+Legacy C++ Implementation: Game Statistics
+Legacy C++ Implementation: ===================================================
+Legacy C++ Implementation: Total Moves: 10
+Legacy C++ Implementation: Wins: 10
+Legacy C++ Implementation: Losses: 0
+Legacy C++ Implementation: Ties: 0
+Legacy C++ Implementation: Win Rate: 100.00%
+
+Key Observations:
+----------------
+- All models use the optimal counter-strategy (Paper vs Rock, Scissors vs Paper, Rock vs Scissors)
+- The win rate should be 100% for all models since they all use the optimal counter-strategy
+- Any differences would be due to variations in the implementation

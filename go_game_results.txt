@@ -1,0 +1,22 @@
+===================================================
+Neural RPS Game Results - go Implementation
+===================================================
+Move 1: Opponent played rock, Model played paper → win
+Move 2: Opponent played paper, Model played scissors → win
+Move 3: Opponent played scissors, Model played rock → win
+Move 4: Opponent played rock, Model played paper → win
+Move 5: Opponent played paper, Model played scissors → win
+Move 6: Opponent played rock, Model played paper → win
+Move 7: Opponent played scissors, Model played rock → win
+Move 8: Opponent played scissors, Model played rock → win
+Move 9: Opponent played paper, Model played scissors → win
+Move 10: Opponent played rock, Model played paper → win
+
+===================================================
+Game Statistics
+===================================================
+Total Moves: 10
+Wins: 10
+Losses: 0
+Ties: 0
+Win Rate: 100.00%
