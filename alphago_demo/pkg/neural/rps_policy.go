@@ -2,6 +2,7 @@ package neural
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 
@@ -20,6 +21,9 @@ type RPSPolicyNetwork struct {
 	biasesHidden        []float64
 	weightsHiddenOutput [][]float64
 	biasesOutput        []float64
+
+	// Debug information
+	DebugEpochCount []int
 }
 
 // NewRPSPolicyNetwork creates a new policy network for RPS
@@ -148,6 +152,15 @@ func (n *RPSPolicyNetwork) Train(inputFeatures [][]float64, targetProbs [][]floa
 
 	totalLoss := 0.0
 
+	// Debug flag to track potential instability in epochs 4-6
+	debug := false
+	if len(n.DebugEpochCount) > 0 && n.DebugEpochCount[0] >= 4 && n.DebugEpochCount[0] <= 6 {
+		debug = true
+	}
+
+	// Gradient clipping threshold
+	const gradientThreshold = 1.0
+
 	for b := 0; b < batchSize; b++ {
 		input := inputFeatures[b]
 		target := targetProbs[b]
@@ -170,18 +183,41 @@ func (n *RPSPolicyNetwork) Train(inputFeatures [][]float64, targetProbs [][]floa
 				sum += n.weightsHiddenOutput[i][j] * hidden[j]
 			}
 			logits[i] = sum
+
+			// Debug output for very large logits that might lead to softmax instability
+			if debug && (math.Abs(sum) > 100) {
+				fmt.Printf("WARNING: Large logit detected: %.4f at output %d\n", sum, i)
+			}
 		}
 
 		// Apply softmax
 		probs := softmax(logits)
 
+		// Check for NaN in probabilities which indicates unstable training
+		for i, p := range probs {
+			if CheckForNaN(p) {
+				fmt.Printf("ERROR: NaN detected in probability at epoch %d. Logit: %.4f\n",
+					n.DebugEpochCount[0], logits[i])
+				// Return a high loss but avoid crashing
+				return 100.0
+			}
+		}
+
 		// Calculate cross-entropy loss
 		batchLoss := 0.0
 		for i := 0; i < n.outputSize; i++ {
 			if target[i] > 0 {
-				batchLoss -= target[i] * math.Log(probs[i])
+				// Ensure probability isn't too small to avoid numerical issues
+				p := math.Max(probs[i], 1e-15)
+				batchLoss -= target[i] * math.Log(p)
 			}
 		}
+
+		// Debug output for unusually high loss values
+		if debug && batchLoss > 10.0 {
+			fmt.Printf("WARNING: High batch loss detected: %.4f\n", batchLoss)
+		}
+
 		totalLoss += batchLoss
 
 		// Backward pass: calculate gradients
@@ -189,12 +225,17 @@ func (n *RPSPolicyNetwork) Train(inputFeatures [][]float64, targetProbs [][]floa
 		outputGradients := make([]float64, n.outputSize)
 		for i := 0; i < n.outputSize; i++ {
 			outputGradients[i] = probs[i] - target[i]
+			// Apply gradient clipping to prevent explosion
+			outputGradients[i] = clipGradient(outputGradients[i], gradientThreshold)
 		}
 
 		// Update hidden->output weights and biases
 		for i := 0; i < n.outputSize; i++ {
 			for j := 0; j < n.hiddenSize; j++ {
-				n.weightsHiddenOutput[i][j] -= learningRate * outputGradients[i] * hidden[j]
+				update := learningRate * outputGradients[i] * hidden[j]
+				// Apply additional safety: clip the weight update
+				update = clipGradient(update, 0.1)
+				n.weightsHiddenOutput[i][j] -= update
 			}
 			n.biasesOutput[i] -= learningRate * outputGradients[i]
 		}
@@ -209,12 +250,17 @@ func (n *RPSPolicyNetwork) Train(inputFeatures [][]float64, targetProbs [][]floa
 			if hidden[i] <= 0 {
 				hiddenGradients[i] = 0
 			}
+			// Apply gradient clipping
+			hiddenGradients[i] = clipGradient(hiddenGradients[i], gradientThreshold)
 		}
 
 		// Update input->hidden weights and biases
 		for i := 0; i < n.hiddenSize; i++ {
 			for j := 0; j < n.inputSize; j++ {
-				n.weightsInputHidden[i][j] -= learningRate * hiddenGradients[i] * input[j]
+				update := learningRate * hiddenGradients[i] * input[j]
+				// Apply additional safety: clip the weight update
+				update = clipGradient(update, 0.1)
+				n.weightsInputHidden[i][j] -= update
 			}
 			n.biasesHidden[i] -= learningRate * hiddenGradients[i]
 		}
@@ -283,4 +329,9 @@ func (n *RPSPolicyNetwork) LoadFromFile(filename string) error {
 	loadWeightsVector(data["biasesOutput"], &n.biasesOutput)
 
 	return nil
+}
+
+// GetHiddenSize returns the hidden layer size
+func (n *RPSPolicyNetwork) GetHiddenSize() int {
+	return n.hiddenSize
 }

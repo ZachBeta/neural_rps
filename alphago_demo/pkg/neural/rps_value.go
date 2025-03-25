@@ -2,6 +2,7 @@ package neural
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 
@@ -20,6 +21,9 @@ type RPSValueNetwork struct {
 	biasesHidden        []float64
 	weightsHiddenOutput [][]float64
 	biasesOutput        []float64
+
+	// Debug information
+	DebugEpochCount []int
 }
 
 // NewRPSValueNetwork creates a new value network for RPS
@@ -105,6 +109,15 @@ func (n *RPSValueNetwork) Train(inputFeatures [][]float64, targetValues []float6
 
 	totalLoss := 0.0
 
+	// Debug flag to track potential instability in epochs 4-6
+	debug := false
+	if len(n.DebugEpochCount) > 0 && n.DebugEpochCount[0] >= 4 && n.DebugEpochCount[0] <= 6 {
+		debug = true
+	}
+
+	// Gradient clipping threshold
+	const gradientThreshold = 1.0
+
 	for b := 0; b < batchSize; b++ {
 		input := inputFeatures[b]
 		target := targetValues[b]
@@ -125,20 +138,46 @@ func (n *RPSValueNetwork) Train(inputFeatures [][]float64, targetValues []float6
 			logit += n.weightsHiddenOutput[0][i] * hidden[i]
 		}
 
+		// Debug output for very large logits that might lead to sigmoid instability
+		if debug && (math.Abs(logit) > 20) {
+			fmt.Printf("WARNING: Large value logit detected: %.4f\n", logit)
+		}
+
 		// Apply sigmoid
 		prediction := sigmoid(logit)
 
+		// Check for NaN in prediction which indicates unstable training
+		if CheckForNaN(prediction) {
+			fmt.Printf("ERROR: NaN detected in value prediction at epoch %d. Logit: %.4f\n",
+				n.DebugEpochCount[0], logit)
+			// Return a high loss but avoid crashing
+			return 100.0
+		}
+
 		// Calculate mean squared error loss
 		loss := (prediction - target) * (prediction - target)
+
+		// Debug output for unusually high loss values
+		if debug && loss > 5.0 {
+			fmt.Printf("WARNING: High value loss detected: %.4f, pred=%.4f, target=%.4f\n",
+				loss, prediction, target)
+		}
+
 		totalLoss += loss
 
 		// Backward pass: calculate gradients
 		// Output layer gradient
 		outputGradient := 2 * (prediction - target) * prediction * (1 - prediction)
 
+		// Apply gradient clipping
+		outputGradient = clipGradient(outputGradient, gradientThreshold)
+
 		// Update hidden->output weights and bias
 		for i := 0; i < n.hiddenSize; i++ {
-			n.weightsHiddenOutput[0][i] -= learningRate * outputGradient * hidden[i]
+			update := learningRate * outputGradient * hidden[i]
+			// Apply additional safety: clip the weight update
+			update = clipGradient(update, 0.1)
+			n.weightsHiddenOutput[0][i] -= update
 		}
 		n.biasesOutput[0] -= learningRate * outputGradient
 
@@ -150,12 +189,17 @@ func (n *RPSValueNetwork) Train(inputFeatures [][]float64, targetValues []float6
 			if hidden[i] <= 0 {
 				hiddenGradients[i] = 0
 			}
+			// Apply gradient clipping
+			hiddenGradients[i] = clipGradient(hiddenGradients[i], gradientThreshold)
 		}
 
 		// Update input->hidden weights and biases
 		for i := 0; i < n.hiddenSize; i++ {
 			for j := 0; j < n.inputSize; j++ {
-				n.weightsInputHidden[i][j] -= learningRate * hiddenGradients[i] * input[j]
+				update := learningRate * hiddenGradients[i] * input[j]
+				// Apply additional safety: clip the weight update
+				update = clipGradient(update, 0.1)
+				n.weightsInputHidden[i][j] -= update
 			}
 			n.biasesHidden[i] -= learningRate * hiddenGradients[i]
 		}
@@ -228,4 +272,9 @@ func (n *RPSValueNetwork) LoadFromFile(filename string) error {
 	}
 
 	return nil
+}
+
+// GetHiddenSize returns the hidden layer size
+func (n *RPSValueNetwork) GetHiddenSize() int {
+	return n.hiddenSize
 }

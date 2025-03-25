@@ -2,9 +2,7 @@ package training
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
-	"time"
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/mcts"
@@ -215,140 +213,120 @@ func (sp *RPSSelfPlay) extractPolicy(node *mcts.RPSMCTSNode) []float64 {
 	return policy
 }
 
-// TrainNetworks trains the policy and value networks
-func (sp *RPSSelfPlay) TrainNetworks(numEpochs int, batchSize int, learningRate float64, verbose bool) {
+// TrainNetworks trains the policy and value networks on the generated examples
+func (sp *RPSSelfPlay) TrainNetworks(numEpochs int, batchSize int, learningRate float64, verbose bool) ([]float64, []float64) {
+	// Check if we have examples
 	if len(sp.examples) == 0 {
-		fmt.Println("No training examples available. Generate games first.")
-		return
+		if verbose {
+			fmt.Println("No training examples to learn from!")
+		}
+		return nil, nil
 	}
 
-	// Shuffle examples
+	// Shuffle examples for better learning
 	rand.Shuffle(len(sp.examples), func(i, j int) {
 		sp.examples[i], sp.examples[j] = sp.examples[j], sp.examples[i]
 	})
 
-	// Prepare training data
-	inputFeatures := make([][]float64, len(sp.examples))
-	policyTargets := make([][]float64, len(sp.examples))
-	valueTargets := make([]float64, len(sp.examples))
+	// Track losses for each epoch
+	policyLosses := make([]float64, numEpochs)
+	valueLosses := make([]float64, numEpochs)
 
-	for i, example := range sp.examples {
-		inputFeatures[i] = example.BoardState
-		policyTargets[i] = example.PolicyTarget
-		valueTargets[i] = example.ValueTarget
-	}
+	// Initialize or clear debug epoch counters
+	sp.policyNetwork.DebugEpochCount = []int{0}
+	sp.valueNetwork.DebugEpochCount = []int{0}
 
-	// Show distribution of target values
-	if verbose {
-		var wins, losses, draws int
-		for _, v := range valueTargets {
-			if v > 0.7 {
-				wins++
-			} else if v < 0.3 {
-				losses++
-			} else {
-				draws++
-			}
-		}
-		fmt.Printf("Training data distribution: %.1f%% wins, %.1f%% losses, %.1f%% draws\n",
-			float64(wins)/float64(len(valueTargets))*100,
-			float64(losses)/float64(len(valueTargets))*100,
-			float64(draws)/float64(len(valueTargets))*100)
-	}
-
-	// Initialize metrics tracking
-	initialPolicyLoss := 0.0
-	initialValueLoss := 0.0
-	bestPolicyLoss := math.MaxFloat64
-	bestValueLoss := math.MaxFloat64
-
-	totalStartTime := time.Now()
-	numBatches := (len(inputFeatures) + batchSize - 1) / batchSize // ceiling division
-
-	// Train for the specified number of epochs
+	// Train networks
 	for epoch := 0; epoch < numEpochs; epoch++ {
-		epochStartTime := time.Now()
-		totalPolicyLoss := 0.0
-		totalValueLoss := 0.0
-		validBatches := 0
+		// Update epoch counter for debugging
+		sp.policyNetwork.DebugEpochCount[0] = epoch
+		sp.valueNetwork.DebugEpochCount[0] = epoch
+
+		policyLoss := 0.0
+		valueLoss := 0.0
+
+		// Calculate previous losses for improvement reporting
+		var prevPolicyLoss, prevValueLoss float64
+		if epoch > 0 {
+			prevPolicyLoss = policyLosses[epoch-1]
+			prevValueLoss = valueLosses[epoch-1]
+		}
 
 		// Process in batches
-		for batchStart := 0; batchStart < len(inputFeatures); batchStart += batchSize {
-			batchEnd := batchStart + batchSize
-			if batchEnd > len(inputFeatures) {
-				batchEnd = len(inputFeatures)
+		for b := 0; b < len(sp.examples); b += batchSize {
+			end := b + batchSize
+			if end > len(sp.examples) {
+				end = len(sp.examples)
 			}
 
-			batchInputs := inputFeatures[batchStart:batchEnd]
-			batchPolicyTargets := policyTargets[batchStart:batchEnd]
-			batchValueTargets := valueTargets[batchStart:batchEnd]
+			batch := sp.examples[b:end]
 
-			// Train policy network
-			policyLoss := sp.policyNetwork.Train(batchInputs, batchPolicyTargets, learningRate)
+			// Create batch inputs and targets
+			states := make([][]float64, len(batch))
+			policyTargets := make([][]float64, len(batch))
+			valueTargets := make([]float64, len(batch))
 
-			// Train value network
-			valueLoss := sp.valueNetwork.Train(batchInputs, batchValueTargets, learningRate)
-
-			// Track metrics if valid
-			if !math.IsNaN(policyLoss) && !math.IsInf(policyLoss, 0) &&
-				!math.IsNaN(valueLoss) && !math.IsInf(valueLoss, 0) {
-				totalPolicyLoss += policyLoss
-				totalValueLoss += valueLoss
-				validBatches++
+			for i, example := range batch {
+				states[i] = example.BoardState
+				policyTargets[i] = example.PolicyTarget
+				valueTargets[i] = example.ValueTarget
 			}
 
-			// Store initial losses
-			if epoch == 0 && batchStart == 0 {
-				initialPolicyLoss = policyLoss
-				initialValueLoss = valueLoss
+			// Train policy network with lower learning rate for larger networks
+			actualLR := learningRate
+			if sp.policyNetwork.GetHiddenSize() > 100 {
+				// Reduce learning rate for larger networks to prevent instability
+				actualLR = learningRate * 0.5
 			}
+
+			policyLossBatch := sp.policyNetwork.Train(states, policyTargets, actualLR)
+			policyLoss += policyLossBatch
+
+			// Train value network with same adjusted learning rate
+			valueLossBatch := sp.valueNetwork.Train(states, valueTargets, actualLR)
+			valueLoss += valueLossBatch
 		}
 
-		// Calculate average losses for this epoch
-		avgPolicyLoss := 0.0
-		avgValueLoss := 0.0
-		if validBatches > 0 {
-			avgPolicyLoss = totalPolicyLoss / float64(validBatches)
-			avgValueLoss = totalValueLoss / float64(validBatches)
+		// Calculate average loss
+		batchCount := (len(sp.examples) + batchSize - 1) / batchSize
+		if batchCount > 0 {
+			policyLoss /= float64(batchCount)
+			valueLoss /= float64(batchCount)
 		}
 
-		// Update best losses
-		if avgPolicyLoss < bestPolicyLoss && !math.IsNaN(avgPolicyLoss) && !math.IsInf(avgPolicyLoss, 0) {
-			bestPolicyLoss = avgPolicyLoss
+		// Store the losses
+		policyLosses[epoch] = policyLoss
+		valueLosses[epoch] = valueLoss
+
+		// Calculate improvement percentages
+		policyImprovement := 0.0
+		valueImprovement := 0.0
+		if epoch > 0 && prevPolicyLoss > 0 {
+			policyImprovement = (prevPolicyLoss - policyLoss) / prevPolicyLoss * 100
 		}
-		if avgValueLoss < bestValueLoss && !math.IsNaN(avgValueLoss) && !math.IsInf(avgValueLoss, 0) {
-			bestValueLoss = avgValueLoss
+		if epoch > 0 && prevValueLoss > 0 {
+			valueImprovement = (prevValueLoss - valueLoss) / prevValueLoss * 100
 		}
 
-		// Protect against divide-by-zero when numEpochs < 10
-		shouldPrint := verbose && (epoch == 0 ||
-			epoch == numEpochs-1 ||
-			(numEpochs >= 10 && epoch%(numEpochs/10) == 0))
+		if verbose {
+			improveStr := ""
+			if epoch > 0 {
+				improveStr = fmt.Sprintf(" (Policy: %+.1f%%, Value: %+.1f%%)",
+					policyImprovement, valueImprovement)
+			}
 
-		epochTime := time.Since(epochStartTime)
-		batchesPerSecond := float64(numBatches) / epochTime.Seconds()
+			fmt.Printf("Epoch %d/%d - Policy Loss: %.4f, Value Loss: %.4f%s\n",
+				epoch+1, numEpochs, policyLoss, valueLoss, improveStr)
 
-		if shouldPrint {
-			fmt.Printf("Epoch %d/%d: Policy Loss = %.4f, Value Loss = %.4f [%.2f batches/sec]\n",
-				epoch+1, numEpochs, avgPolicyLoss, avgValueLoss, batchesPerSecond)
+			// Add extra warnings if we see unexpected patterns in the losses
+			if policyLoss < 0.0001 || valueLoss < 0.0001 {
+				fmt.Printf("WARNING: Very low loss detected, possible underfitting or training collapse\n")
+			}
+			if epoch > 0 && (policyLoss > prevPolicyLoss*2 || valueLoss > prevValueLoss*2) {
+				fmt.Printf("WARNING: Loss increased significantly, possible training instability\n")
+			}
 		}
 	}
 
-	// Calculate overall metrics
-	totalTime := time.Since(totalStartTime)
-	epochsPerSecond := float64(numEpochs) / totalTime.Seconds()
-
-	// Print final metrics
-	if verbose {
-		policyImprovement := (initialPolicyLoss - bestPolicyLoss) / initialPolicyLoss * 100
-		valueImprovement := (initialValueLoss - bestValueLoss) / initialValueLoss * 100
-
-		fmt.Printf("Training summary:\n")
-		fmt.Printf("  Initial policy loss: %.4f, Best: %.4f (%.1f%% improvement)\n",
-			initialPolicyLoss, bestPolicyLoss, policyImprovement)
-		fmt.Printf("  Initial value loss: %.4f, Best: %.4f (%.1f%% improvement)\n",
-			initialValueLoss, bestValueLoss, valueImprovement)
-		fmt.Printf("  Training speed: %.2f epochs/sec, %.2f examples/sec\n",
-			epochsPerSecond, float64(len(inputFeatures)*numEpochs)/totalTime.Seconds())
-	}
+	return policyLosses, valueLosses
 }

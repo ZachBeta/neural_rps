@@ -135,3 +135,19 @@ func loadWeightsVector(data interface{}, target *[]float64) error {
 
 	return nil
 }
+
+// clipGradient restricts a gradient value to a specified range to prevent explosion
+func clipGradient(gradient float64, threshold float64) float64 {
+	if gradient > threshold {
+		return threshold
+	}
+	if gradient < -threshold {
+		return -threshold
+	}
+	return gradient
+}
+
+// CheckForNaN returns true if the value is NaN or Infinity
+func CheckForNaN(value float64) bool {
+	return math.IsNaN(value) || math.IsInf(value, 0)
+}

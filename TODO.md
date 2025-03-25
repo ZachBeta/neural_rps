@@ -4,9 +4,12 @@
 ## in progress
 
 ### rps tac toe
+* can we improve training performance by paralellizing with goroutines?
 * can we improve our displays of the training process? I want more insight into how well it's going, how complex the neural network is
   * I want a measure of complexity of the network displayed somewhere in the comparison run even if it's just a count of neurons and connections
-* can we improve training performance by paralellizing with goroutines?
+
+### tournament
+* it would be really neat to see them go up against eachother, and have some kind of elo ranking
 
 ### standarizing the model inputs and outputs to compare effectiveness
 * move from tic tac toe to rps card game - I thought this was done
