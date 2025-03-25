@@ -4,6 +4,21 @@ project(neural_rps)
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Add compiler warnings
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
+endif()
+
+# Option to enable detailed network visualization
+option(DETAILED_VIZ "Enable detailed network visualization" OFF)
+if(DETAILED_VIZ)
+    add_definitions(-DDETAILED_VIZ)
+endif()
+
+# Option to build the RPS agent
+option(BUILD_AGENT "Build the RPS agent executable" OFF)
 
 # Find Eigen3
 find_package(Eigen3 QUIET)
@@ -18,11 +33,31 @@ endif()
 # Add include directories
 include_directories(${CMAKE_SOURCE_DIR})
 
-# Add a simpler program that just outputs a demo message
-add_executable(neural_rps_demo simple_demo.cpp)
+# Create the main executable
+add_executable(neural_rps main.cpp NeuralNetwork.cpp)
 
-# Add the full neural network implementation
-add_executable(neural_rps_full main.cpp NeuralNetwork.cpp)
+# Enable testing
+enable_testing()
+
+# Basic test to verify the neural network learns
+add_executable(test_learning test_learning.cpp NeuralNetwork.cpp)
+add_test(NAME TestLearning COMMAND test_learning)
+
+# Test for network serialization
+add_executable(test_serialization test_serialization.cpp NeuralNetwork.cpp)
+add_test(NAME TestSerialization COMMAND test_serialization)
+
+# Simple demo executable
+add_executable(simple_demo simple_demo.cpp NeuralNetwork.cpp)
+
+# RPS agent executable (only built when BUILD_AGENT=ON)
+if(BUILD_AGENT)
+    add_executable(rps_agent rps_agent.cpp NeuralNetwork.cpp)
+endif()
+
+# Installation targets
+install(TARGETS neural_rps simple_demo DESTINATION bin)
+install(FILES NeuralNetwork.hpp DESTINATION include)
 
 # Enable clang-tidy
 find_program(CLANG_TIDY_EXE NAMES "clang-tidy")

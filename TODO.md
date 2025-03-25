@@ -4,7 +4,9 @@
 ## in progress
 
 ### rps tac toe
-* a full game should probably involve a board switch, there definitely is an imbalance between first and second like black and white in chess
+* can we improve our displays of the training process? I want more insight into how well it's going, how complex the neural network is
+  * I want a measure of complexity of the network displayed somewhere in the comparison run even if it's just a count of neurons and connections
+* can we improve training performance by paralellizing with goroutines?
 
 ### standarizing the model inputs and outputs to compare effectiveness
 * move from tic tac toe to rps card game - I thought this was done

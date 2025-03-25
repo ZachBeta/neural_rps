@@ -1,6 +1,7 @@
 package neural
 
 import (
+	"errors"
 	"math"
 	"math/rand"
 
@@ -161,4 +162,70 @@ func (n *RPSValueNetwork) Train(inputFeatures [][]float64, targetValues []float6
 	}
 
 	return totalLoss / float64(batchSize)
+}
+
+// SaveToFile saves the network weights and biases to a file
+func (n *RPSValueNetwork) SaveToFile(filename string) error {
+	// Create a serializable representation of the network
+	data := map[string]interface{}{
+		"inputSize":           n.inputSize,
+		"hiddenSize":          n.hiddenSize,
+		"weightsInputHidden":  n.weightsInputHidden,
+		"biasesHidden":        n.biasesHidden,
+		"weightsHiddenOutput": n.weightsHiddenOutput,
+		"biasOutput":          n.biasesOutput[0],
+	}
+
+	// Marshal and save to file using the helper function
+	return saveToJSON(filename, data)
+}
+
+// LoadFromFile loads the network weights and biases from a file
+func (n *RPSValueNetwork) LoadFromFile(filename string) error {
+	// Load data from file
+	var data map[string]interface{}
+	err := loadFromJSON(filename, &data)
+	if err != nil {
+		return err
+	}
+
+	// Extract structure and size information
+	inputSize, ok1 := data["inputSize"].(float64)
+	hiddenSize, ok2 := data["hiddenSize"].(float64)
+
+	if !ok1 || !ok2 {
+		return errors.New("invalid network structure in file")
+	}
+
+	// Check compatibility
+	if int(inputSize) != n.inputSize {
+		return errors.New("incompatible network structure")
+	}
+
+	// Resize network if hidden size differs
+	if int(hiddenSize) != n.hiddenSize {
+		n.hiddenSize = int(hiddenSize)
+		n.weightsInputHidden = make([][]float64, n.hiddenSize)
+		n.biasesHidden = make([]float64, n.hiddenSize)
+		for i := 0; i < n.hiddenSize; i++ {
+			n.weightsInputHidden[i] = make([]float64, n.inputSize)
+		}
+		n.weightsHiddenOutput = make([][]float64, n.outputSize)
+		for i := 0; i < n.outputSize; i++ {
+			n.weightsHiddenOutput[i] = make([]float64, n.hiddenSize)
+		}
+		n.biasesOutput = make([]float64, n.outputSize)
+	}
+
+	// Load weights and biases
+	loadWeightsMatrix(data["weightsInputHidden"], &n.weightsInputHidden)
+	loadWeightsVector(data["biasesHidden"], &n.biasesHidden)
+	loadWeightsMatrix(data["weightsHiddenOutput"], &n.weightsHiddenOutput)
+
+	// Load bias output (which is a single value)
+	if biasOutput, ok := data["biasOutput"].(float64); ok {
+		n.biasesOutput[0] = biasOutput
+	}
+
+	return nil
 }

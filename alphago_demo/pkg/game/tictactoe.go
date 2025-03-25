@@ -77,15 +77,17 @@ func (g *AGGame) IsValidMove(move AGMove) bool {
 
 // MakeMove applies a move to the game state
 func (g *AGGame) MakeMove(move AGMove) error {
-	// Set the player for this move
-	move.Player = g.CurrentPlayer
-
 	// Check if the move is valid
 	if move.Row < 0 || move.Row >= 3 || move.Col < 0 || move.Col >= 3 {
 		return errors.New("move is out of bounds")
 	}
 	if g.Board[move.Row][move.Col] != Empty {
 		return errors.New("cell is already occupied")
+	}
+
+	// Check if it's the correct player's turn
+	if move.Player != g.CurrentPlayer {
+		return errors.New("not the player's turn")
 	}
 
 	// Apply the move

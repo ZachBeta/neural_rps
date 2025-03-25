@@ -1,4 +1,4 @@
-.PHONY: build run test test-coverage clean build-legacy-cpp build-cpp build-go build-alphago run-demos run-cpp-full
+.PHONY: all build run test test-coverage clean build-legacy-cpp build-cpp build-go build-alphago run-demos run-cpp-full install-go-deps install-cpp-deps game-server run-tournament train-and-compete train-large-comparison play-vs-ai compare-models
 
 # Build all implementations
 build: build-go build-cpp build-alphago build-legacy-cpp
@@ -98,11 +98,89 @@ run-cpp-full: build-cpp
 	./cpp_implementation/build/neural_rps_full
 
 # Install dependencies
-deps:
-	@echo "Installing dependencies..."
+install-go-deps:
+	@echo "Installing Go dependencies..."
 	cd golang_implementation && go mod tidy
 	cd alphago_demo && go mod tidy
 	go install github.com/golangci/golint/cmd/golangci-lint@latest
+	@echo "Go dependencies installed!"
+
+install-cpp-deps:
+	@echo "Checking for CMake..."
+	@which cmake > /dev/null || (echo "CMake not found. Please install CMake." && exit 1)
+	@echo "Dependencies checked!"
+
+# Game server and tournament targets
+build-game-server:
+	@echo "Building RPS game server..."
+	@mkdir -p scripts/bin
+	@cd scripts && go build -o bin/game_server game_server.go agent_adapters.go
+	@echo "Game server build complete!"
+
+run-game-server: build-game-server
+	@echo "Starting RPS game server..."
+	@cd scripts && ./bin/game_server
+
+# Build the external agent adapters for Go and C++ implementations
+build-agent-adapters:
+	@echo "Building external agent adapters..."
+	@cd golang_implementation && go build -o bin/rps_agent ./cmd/rps_agent
+	@mkdir -p cpp_implementation/build
+	@cd cpp_implementation/build && cmake .. -DBUILD_AGENT=ON
+	@cd cpp_implementation/build && make rps_agent
+	@echo "Agent adapters build complete!"
+
+# Run a tournament between all available agents
+run-tournament: build-game-server build-agent-adapters
+	@echo "Starting RPS tournament..."
+	@cd scripts && ./bin/game_server --tournament
+	@echo "Tournament complete!"
+
+# Train and compare AlphaGo models
+train-and-compete:
+	@echo "Building training script..."
+	@cd alphago_demo && go build -o bin/train_models ./cmd/train_models
+	@echo "Starting AlphaGo model training and competition..."
+	@cd alphago_demo && ./bin/train_models
+	@echo "Training and competition complete!"
+	@echo "Model files saved to alphago_demo/output/"
+
+# Train with larger datasets (100 vs 1000 games)
+train-large-comparison:
+	@echo "Building training script for large comparison..."
+	@cd alphago_demo && go build -o bin/train_models ./cmd/train_models
+	@echo "Starting AlphaGo model training with 100 vs 1000 games..."
+	@cd alphago_demo && ./bin/train_models
+	@echo "Training and competition complete!"
+	@echo "Model files saved to alphago_demo/output/"
+	@echo "Note: This will take significantly longer to run than the standard training."
+
+# Compare trained models in a tournament
+compare-models:
+	@echo "Building model comparison tool..."
+	@cd alphago_demo && go build -o bin/compare_models ./cmd/compare_models
+	@echo "Starting model comparison tournament..."
+	@cd alphago_demo && ./bin/compare_models --games 100 --model1-name "100Games" --model2-name "1000Games"
+	@echo "Model comparison complete!"
+	@echo "Results saved to alphago_demo/results/ directory"
+
+# Experimental: Play against a trained AI model (not a priority for current development)
+play-vs-ai:
+	@echo "Note: Human vs AI mode is experimental and not a current priority"
+	@cd alphago_demo && go build -o bin/play_vs_ai ./cmd/play_vs_ai
+	@echo "Starting human vs AI game..."
+	@cd alphago_demo && ./bin/play_vs_ai
+	@echo "Game completed!"
+
+# Game server dependencies
+install-game-server-deps:
+	@echo "Installing game server dependencies..."
+	@cd scripts && go get github.com/gorilla/mux
+	@echo "Game server dependencies installed!"
+
+# Install all dependencies
+install-deps: install-go-deps install-cpp-deps install-game-server-deps
+	@echo "All dependencies installed!"
 
 # Format code
 fmt:

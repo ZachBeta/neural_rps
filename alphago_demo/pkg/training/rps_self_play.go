@@ -2,7 +2,9 @@ package training
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
+	"time"
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/mcts"
@@ -58,9 +60,26 @@ func NewRPSSelfPlay(policyNetwork *neural.RPSPolicyNetwork, valueNetwork *neural
 func (sp *RPSSelfPlay) GenerateGames(verbose bool) []RPSTrainingExample {
 	sp.examples = make([]RPSTrainingExample, 0)
 
+	// Calculate update frequency based on number of games
+	// For small number of games (< 100), show updates every 10 games
+	// For large number of games, show updates every 1% of progress
+	updateFrequency := 10
+	if sp.params.NumGames >= 100 {
+		// At least every 1% of games, but maximum every 10 games for very large values
+		onePercent := sp.params.NumGames / 100
+		if onePercent < 10 {
+			updateFrequency = onePercent
+			if updateFrequency < 1 {
+				updateFrequency = 1
+			}
+		}
+	}
+
 	for i := 0; i < sp.params.NumGames; i++ {
-		if verbose && i%10 == 0 {
-			fmt.Printf("Playing game %d/%d\n", i+1, sp.params.NumGames)
+		// Show progress more frequently
+		if verbose && (i%updateFrequency == 0 || i == sp.params.NumGames-1) {
+			fmt.Printf("Playing game %d/%d (%.1f%%)\n",
+				i+1, sp.params.NumGames, float64(i+1)/float64(sp.params.NumGames)*100)
 		}
 
 		gameExamples := sp.playGame(verbose && i == 0)
@@ -219,8 +238,40 @@ func (sp *RPSSelfPlay) TrainNetworks(numEpochs int, batchSize int, learningRate 
 		valueTargets[i] = example.ValueTarget
 	}
 
+	// Show distribution of target values
+	if verbose {
+		var wins, losses, draws int
+		for _, v := range valueTargets {
+			if v > 0.7 {
+				wins++
+			} else if v < 0.3 {
+				losses++
+			} else {
+				draws++
+			}
+		}
+		fmt.Printf("Training data distribution: %.1f%% wins, %.1f%% losses, %.1f%% draws\n",
+			float64(wins)/float64(len(valueTargets))*100,
+			float64(losses)/float64(len(valueTargets))*100,
+			float64(draws)/float64(len(valueTargets))*100)
+	}
+
+	// Initialize metrics tracking
+	initialPolicyLoss := 0.0
+	initialValueLoss := 0.0
+	bestPolicyLoss := math.MaxFloat64
+	bestValueLoss := math.MaxFloat64
+
+	totalStartTime := time.Now()
+	numBatches := (len(inputFeatures) + batchSize - 1) / batchSize // ceiling division
+
 	// Train for the specified number of epochs
 	for epoch := 0; epoch < numEpochs; epoch++ {
+		epochStartTime := time.Now()
+		totalPolicyLoss := 0.0
+		totalValueLoss := 0.0
+		validBatches := 0
+
 		// Process in batches
 		for batchStart := 0; batchStart < len(inputFeatures); batchStart += batchSize {
 			batchEnd := batchStart + batchSize
@@ -238,10 +289,66 @@ func (sp *RPSSelfPlay) TrainNetworks(numEpochs int, batchSize int, learningRate 
 			// Train value network
 			valueLoss := sp.valueNetwork.Train(batchInputs, batchValueTargets, learningRate)
 
-			if verbose && (epoch == 0 || epoch == numEpochs-1 || epoch%(numEpochs/10) == 0) && batchStart == 0 {
-				fmt.Printf("Epoch %d/%d: Policy Loss = %.4f, Value Loss = %.4f\n",
-					epoch+1, numEpochs, policyLoss, valueLoss)
+			// Track metrics if valid
+			if !math.IsNaN(policyLoss) && !math.IsInf(policyLoss, 0) &&
+				!math.IsNaN(valueLoss) && !math.IsInf(valueLoss, 0) {
+				totalPolicyLoss += policyLoss
+				totalValueLoss += valueLoss
+				validBatches++
+			}
+
+			// Store initial losses
+			if epoch == 0 && batchStart == 0 {
+				initialPolicyLoss = policyLoss
+				initialValueLoss = valueLoss
 			}
 		}
+
+		// Calculate average losses for this epoch
+		avgPolicyLoss := 0.0
+		avgValueLoss := 0.0
+		if validBatches > 0 {
+			avgPolicyLoss = totalPolicyLoss / float64(validBatches)
+			avgValueLoss = totalValueLoss / float64(validBatches)
+		}
+
+		// Update best losses
+		if avgPolicyLoss < bestPolicyLoss && !math.IsNaN(avgPolicyLoss) && !math.IsInf(avgPolicyLoss, 0) {
+			bestPolicyLoss = avgPolicyLoss
+		}
+		if avgValueLoss < bestValueLoss && !math.IsNaN(avgValueLoss) && !math.IsInf(avgValueLoss, 0) {
+			bestValueLoss = avgValueLoss
+		}
+
+		// Protect against divide-by-zero when numEpochs < 10
+		shouldPrint := verbose && (epoch == 0 ||
+			epoch == numEpochs-1 ||
+			(numEpochs >= 10 && epoch%(numEpochs/10) == 0))
+
+		epochTime := time.Since(epochStartTime)
+		batchesPerSecond := float64(numBatches) / epochTime.Seconds()
+
+		if shouldPrint {
+			fmt.Printf("Epoch %d/%d: Policy Loss = %.4f, Value Loss = %.4f [%.2f batches/sec]\n",
+				epoch+1, numEpochs, avgPolicyLoss, avgValueLoss, batchesPerSecond)
+		}
+	}
+
+	// Calculate overall metrics
+	totalTime := time.Since(totalStartTime)
+	epochsPerSecond := float64(numEpochs) / totalTime.Seconds()
+
+	// Print final metrics
+	if verbose {
+		policyImprovement := (initialPolicyLoss - bestPolicyLoss) / initialPolicyLoss * 100
+		valueImprovement := (initialValueLoss - bestValueLoss) / initialValueLoss * 100
+
+		fmt.Printf("Training summary:\n")
+		fmt.Printf("  Initial policy loss: %.4f, Best: %.4f (%.1f%% improvement)\n",
+			initialPolicyLoss, bestPolicyLoss, policyImprovement)
+		fmt.Printf("  Initial value loss: %.4f, Best: %.4f (%.1f%% improvement)\n",
+			initialValueLoss, bestValueLoss, valueImprovement)
+		fmt.Printf("  Training speed: %.2f epochs/sec, %.2f examples/sec\n",
+			epochsPerSecond, float64(len(inputFeatures)*numEpochs)/totalTime.Seconds())
 	}
 }

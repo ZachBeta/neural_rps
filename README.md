@@ -158,6 +158,7 @@ Each implementation has its own README in its respective directory with more det
 - [Golang Implementation](golang_implementation/README.md) - Go-based implementation with improved architecture
 - [AlphaGo Demos](alphago_demo/README.md) - Demonstrations of AlphaGo techniques for Tic-Tac-Toe
 - [RPS Card Game](alphago_demo/RPS_README.md) - AlphaGo-style implementation of the RPS card game
+- [Neural Network Models](MODELS_README.md) - Training methodology and model comparison for RPS
 
 ## License
 

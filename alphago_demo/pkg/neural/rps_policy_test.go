@@ -1,6 +1,9 @@
 package neural
 
 import (
+	"math"
+	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
@@ -200,6 +203,97 @@ func TestRPSPolicyReLU(t *testing.T) {
 		result := relu(tc.input)
 		if result != tc.expected {
 			t.Errorf("ReLU(%f) = %f, expected %f", tc.input, result, tc.expected)
+		}
+	}
+}
+
+func TestRPSPolicySaveLoadFile(t *testing.T) {
+	// Create a temporary file
+	tmpfile, err := os.CreateTemp("", "policy_test_*.model")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	tmpPath := tmpfile.Name()
+	tmpfile.Close()
+	defer os.Remove(tmpPath) // Clean up
+
+	// Create two networks: one to save, one to load
+	originalNetwork := NewRPSPolicyNetwork(64)
+	loadedNetwork := NewRPSPolicyNetwork(32) // Intentionally different size
+
+	// Generate some sample data and train the original network a bit
+	// to make the weights different from random initialization
+	inputFeatures := make([][]float64, 10)
+	targetProbs := make([][]float64, 10)
+
+	for i := 0; i < 10; i++ {
+		inputFeatures[i] = make([]float64, 81)
+		targetProbs[i] = make([]float64, 9)
+
+		// Fill with random data
+		for j := 0; j < 81; j++ {
+			inputFeatures[i][j] = rand.Float64()
+		}
+
+		// Make target a probability distribution
+		sum := 0.0
+		for j := 0; j < 9; j++ {
+			targetProbs[i][j] = rand.Float64()
+			sum += targetProbs[i][j]
+		}
+		for j := 0; j < 9; j++ {
+			targetProbs[i][j] /= sum
+		}
+	}
+
+	// Train the original network a bit
+	originalNetwork.Train(inputFeatures, targetProbs, 0.01)
+
+	// Predict some values with original network
+	testInput := make([]float64, 81)
+	for i := 0; i < 81; i++ {
+		testInput[i] = rand.Float64()
+	}
+	originalPrediction := originalNetwork.forward(testInput)
+
+	// Save the original network
+	err = originalNetwork.SaveToFile(tmpPath)
+	if err != nil {
+		t.Fatalf("Failed to save network: %v", err)
+	}
+
+	// Load into the other network
+	err = loadedNetwork.LoadFromFile(tmpPath)
+	if err != nil {
+		t.Fatalf("Failed to load network: %v", err)
+	}
+
+	// Check that the networks have the same parameters now
+	if loadedNetwork.inputSize != originalNetwork.inputSize {
+		t.Errorf("Input size mismatch: got %d, want %d", loadedNetwork.inputSize, originalNetwork.inputSize)
+	}
+
+	if loadedNetwork.hiddenSize != originalNetwork.hiddenSize {
+		t.Errorf("Hidden size mismatch: got %d, want %d", loadedNetwork.hiddenSize, originalNetwork.hiddenSize)
+	}
+
+	if loadedNetwork.outputSize != originalNetwork.outputSize {
+		t.Errorf("Output size mismatch: got %d, want %d", loadedNetwork.outputSize, originalNetwork.outputSize)
+	}
+
+	// Check that the loaded network produces the same predictions
+	loadedPrediction := loadedNetwork.forward(testInput)
+
+	// Compare predictions
+	if len(originalPrediction) != len(loadedPrediction) {
+		t.Fatalf("Prediction length mismatch: got %d, want %d", len(loadedPrediction), len(originalPrediction))
+	}
+
+	for i := 0; i < len(originalPrediction); i++ {
+		// Allow for small floating-point differences
+		if math.Abs(originalPrediction[i]-loadedPrediction[i]) > 1e-6 {
+			t.Errorf("Prediction mismatch at index %d: got %f, want %f",
+				i, loadedPrediction[i], originalPrediction[i])
 		}
 	}
 }

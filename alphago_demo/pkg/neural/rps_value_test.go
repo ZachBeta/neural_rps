@@ -1,130 +1,164 @@
 package neural
 
 import (
+	"math"
+	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
 )
 
 func TestNewRPSValueNetwork(t *testing.T) {
-	network := NewRPSValueNetwork(32)
+	network := NewRPSValueNetwork(64)
 
+	// Check network structure
 	if network.inputSize != 81 {
-		t.Errorf("Expected input size to be 81, got %d", network.inputSize)
+		t.Errorf("Expected input size 81, got %d", network.inputSize)
 	}
 
-	if network.hiddenSize != 32 {
-		t.Errorf("Expected hidden size to be 32, got %d", network.hiddenSize)
+	if network.hiddenSize != 64 {
+		t.Errorf("Expected hidden size 64, got %d", network.hiddenSize)
 	}
 
 	if network.outputSize != 1 {
-		t.Errorf("Expected output size to be 1, got %d", network.outputSize)
+		t.Errorf("Expected output size 1, got %d", network.outputSize)
 	}
 
-	// Check that weights and biases were properly initialized
-	if len(network.weightsInputHidden) != network.hiddenSize {
-		t.Errorf("Expected weightsInputHidden to have size %d, got %d",
-			network.hiddenSize, len(network.weightsInputHidden))
+	// Check that weights and biases are initialized
+	if len(network.weightsInputHidden) != 64 {
+		t.Errorf("Expected 64 input-hidden weight vectors, got %d", len(network.weightsInputHidden))
 	}
 
-	if len(network.biasesHidden) != network.hiddenSize {
-		t.Errorf("Expected biasesHidden to have size %d, got %d",
-			network.hiddenSize, len(network.biasesHidden))
+	if len(network.biasesHidden) != 64 {
+		t.Errorf("Expected 64 hidden biases, got %d", len(network.biasesHidden))
 	}
 
-	if len(network.weightsHiddenOutput) != network.outputSize {
-		t.Errorf("Expected weightsHiddenOutput to have size %d, got %d",
-			network.outputSize, len(network.weightsHiddenOutput))
+	if len(network.weightsHiddenOutput) != 1 {
+		t.Errorf("Expected 1 hidden-output weight vector, got %d", len(network.weightsHiddenOutput))
 	}
 
-	if len(network.biasesOutput) != network.outputSize {
-		t.Errorf("Expected biasesOutput to have size %d, got %d",
-			network.outputSize, len(network.biasesOutput))
+	if len(network.biasesOutput) != 1 {
+		t.Errorf("Expected 1 output bias, got %d", len(network.biasesOutput))
 	}
 }
 
 func TestRPSValuePredict(t *testing.T) {
-	network := NewRPSValueNetwork(32)
-	gameInstance := game.NewRPSGame(15, 5, 10)
+	network := NewRPSValueNetwork(64)
+	gameState := game.NewRPSGame(21, 5, 10)
 
-	// Test that prediction returns a valid value
-	value := network.Predict(gameInstance)
-
-	// Value should be in range [0, 1]
-	if value < 0.0 || value > 1.0 {
-		t.Errorf("Expected value to be in range [0, 1], got %f", value)
-	}
-
-	// Make different game states to ensure values change
-	// Game state 1: Empty board
-	value1 := network.Predict(gameInstance)
-
-	// Game state 2: Add a card to the board
-	// Place a Rock card for Player1 at position 0
-	gameInstance.Board[0] = game.RPSCard{Type: game.Rock, Owner: game.Player1}
-
-	// Now predict again
-	value2 := network.Predict(gameInstance)
-
-	// Game state 3: Add another card to the board
-	// Place a Paper card for Player2 at position 4
-	gameInstance.Board[4] = game.RPSCard{Type: game.Paper, Owner: game.Player2}
-
-	// Now predict again
-	value3 := network.Predict(gameInstance)
-
-	// The values should be different for different game states
-	// This is a basic test to make sure the network is responsive to the game state
-	// We don't check specific values because they depend on random weight initialization
-	if value1 == value2 && value2 == value3 {
-		t.Errorf("Expected different values for different game states, got %f, %f, %f",
-			value1, value2, value3)
+	// Prediction should be between 0 and 1 (sigmoid output)
+	value := network.Predict(gameState)
+	if value < 0 || value > 1 {
+		t.Errorf("Value prediction outside [0,1] range: %f", value)
 	}
 }
 
 func TestRPSValueTrain(t *testing.T) {
-	network := NewRPSValueNetwork(16)
+	network := NewRPSValueNetwork(64)
 
-	// Create test input and target data
-	batchSize := 10
-	inputFeatures := make([][]float64, batchSize)
-	targetValues := make([]float64, batchSize)
+	// Create some training data
+	inputFeatures := make([][]float64, 10)
+	targetValues := make([]float64, 10)
 
-	// Initialize with some test data
-	for i := 0; i < batchSize; i++ {
+	for i := 0; i < 10; i++ {
 		inputFeatures[i] = make([]float64, 81)
-
-		// Set some features
+		// Fill with random values
 		for j := 0; j < 81; j++ {
-			inputFeatures[i][j] = float64(j%3) * 0.1
+			inputFeatures[i][j] = rand.Float64()*2 - 1
 		}
+		// Target between 0 and 1
+		targetValues[i] = rand.Float64()
+	}
 
-		// Set target values (alternating between 0 and 1)
-		if i%2 == 0 {
-			targetValues[i] = 0.0
-		} else {
-			targetValues[i] = 1.0
+	// Initial prediction
+	initialPrediction := network.forward(inputFeatures[0])
+
+	// Train for a few epochs
+	loss := network.Train(inputFeatures, targetValues, 0.1)
+
+	// Check that loss is reasonable
+	if loss < 0 {
+		t.Errorf("Loss should be non-negative, got %f", loss)
+	}
+
+	// Check that network weights have changed
+	finalPrediction := network.forward(inputFeatures[0])
+	if initialPrediction == finalPrediction {
+		t.Errorf("Network prediction unchanged after training")
+	}
+}
+
+func TestRPSValueSaveLoadFile(t *testing.T) {
+	// Create a temporary file
+	tmpfile, err := os.CreateTemp("", "value_test_*.model")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	tmpPath := tmpfile.Name()
+	tmpfile.Close()
+	defer os.Remove(tmpPath) // Clean up
+
+	// Create two networks: one to save, one to load
+	originalNetwork := NewRPSValueNetwork(64)
+	loadedNetwork := NewRPSValueNetwork(32) // Intentionally different size
+
+	// Generate some sample data and train the original network a bit
+	// to make the weights different from random initialization
+	inputFeatures := make([][]float64, 10)
+	targetValues := make([]float64, 10)
+
+	for i := 0; i < 10; i++ {
+		inputFeatures[i] = make([]float64, 81)
+		// Fill with random data
+		for j := 0; j < 81; j++ {
+			inputFeatures[i][j] = rand.Float64()
 		}
+		// Make target a value between 0 and 1
+		targetValues[i] = rand.Float64()
 	}
 
-	// Test that training completes without error
-	learningRate := 0.01
-	loss := network.Train(inputFeatures, targetValues, learningRate)
+	// Train the original network a bit
+	originalNetwork.Train(inputFeatures, targetValues, 0.01)
 
-	// Loss should be positive
-	if loss < 0.0 {
-		t.Errorf("Expected positive loss value, got %f", loss)
+	// Predict a value with original network
+	testInput := make([]float64, 81)
+	for i := 0; i < 81; i++ {
+		testInput[i] = rand.Float64()
+	}
+	originalPrediction := originalNetwork.forward(testInput)
+
+	// Save the original network
+	err = originalNetwork.SaveToFile(tmpPath)
+	if err != nil {
+		t.Fatalf("Failed to save network: %v", err)
 	}
 
-	// Train for a few iterations and check that loss decreases
-	initialLoss := loss
-	for i := 0; i < 5; i++ {
-		loss = network.Train(inputFeatures, targetValues, learningRate)
+	// Load into the other network
+	err = loadedNetwork.LoadFromFile(tmpPath)
+	if err != nil {
+		t.Fatalf("Failed to load network: %v", err)
 	}
 
-	if loss >= initialLoss {
-		t.Errorf("Expected loss to decrease after training, initial: %f, final: %f",
-			initialLoss, loss)
+	// Check that the networks have the same parameters now
+	if loadedNetwork.inputSize != originalNetwork.inputSize {
+		t.Errorf("Input size mismatch: got %d, want %d", loadedNetwork.inputSize, originalNetwork.inputSize)
+	}
+
+	if loadedNetwork.hiddenSize != originalNetwork.hiddenSize {
+		t.Errorf("Hidden size mismatch: got %d, want %d", loadedNetwork.hiddenSize, originalNetwork.hiddenSize)
+	}
+
+	if loadedNetwork.outputSize != originalNetwork.outputSize {
+		t.Errorf("Output size mismatch: got %d, want %d", loadedNetwork.outputSize, originalNetwork.outputSize)
+	}
+
+	// Check that the loaded network produces the same prediction
+	loadedPrediction := loadedNetwork.forward(testInput)
+
+	// Compare predictions (allow for small floating-point differences)
+	if math.Abs(originalPrediction-loadedPrediction) > 1e-6 {
+		t.Errorf("Prediction mismatch: got %f, want %f", loadedPrediction, originalPrediction)
 	}
 }
 

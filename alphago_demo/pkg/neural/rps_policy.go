@@ -1,6 +1,7 @@
 package neural
 
 import (
+	"errors"
 	"math"
 	"math/rand"
 
@@ -220,4 +221,66 @@ func (n *RPSPolicyNetwork) Train(inputFeatures [][]float64, targetProbs [][]floa
 	}
 
 	return totalLoss / float64(batchSize)
+}
+
+// SaveToFile saves the network weights and biases to a file
+func (n *RPSPolicyNetwork) SaveToFile(filename string) error {
+	// Create a serializable representation of the network
+	data := map[string]interface{}{
+		"inputSize":           n.inputSize,
+		"hiddenSize":          n.hiddenSize,
+		"outputSize":          n.outputSize,
+		"weightsInputHidden":  n.weightsInputHidden,
+		"biasesHidden":        n.biasesHidden,
+		"weightsHiddenOutput": n.weightsHiddenOutput,
+		"biasesOutput":        n.biasesOutput,
+	}
+
+	// Marshal and save to file using the helper function
+	return saveToJSON(filename, data)
+}
+
+// LoadFromFile loads the network weights and biases from a file
+func (n *RPSPolicyNetwork) LoadFromFile(filename string) error {
+	// Load data from file
+	var data map[string]interface{}
+	err := loadFromJSON(filename, &data)
+	if err != nil {
+		return err
+	}
+
+	// Extract structure and size information
+	inputSize, ok1 := data["inputSize"].(float64)
+	hiddenSize, ok2 := data["hiddenSize"].(float64)
+	outputSize, ok3 := data["outputSize"].(float64)
+
+	if !ok1 || !ok2 || !ok3 {
+		return errors.New("invalid network structure in file")
+	}
+
+	// Check compatibility
+	if int(inputSize) != n.inputSize || int(outputSize) != n.outputSize {
+		return errors.New("incompatible network structure")
+	}
+
+	// Resize network if hidden size differs
+	if int(hiddenSize) != n.hiddenSize {
+		n.hiddenSize = int(hiddenSize)
+		n.weightsInputHidden = make([][]float64, n.hiddenSize)
+		n.biasesHidden = make([]float64, n.hiddenSize)
+		for i := 0; i < n.hiddenSize; i++ {
+			n.weightsInputHidden[i] = make([]float64, n.inputSize)
+		}
+		for i := 0; i < n.outputSize; i++ {
+			n.weightsHiddenOutput[i] = make([]float64, n.hiddenSize)
+		}
+	}
+
+	// Load weights and biases
+	loadWeightsMatrix(data["weightsInputHidden"], &n.weightsInputHidden)
+	loadWeightsVector(data["biasesHidden"], &n.biasesHidden)
+	loadWeightsMatrix(data["weightsHiddenOutput"], &n.weightsHiddenOutput)
+	loadWeightsVector(data["biasesOutput"], &n.biasesOutput)
+
+	return nil
 }

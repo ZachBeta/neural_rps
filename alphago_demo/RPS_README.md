@@ -23,7 +23,6 @@ The project follows the same architecture as the Tic-Tac-Toe implementation for 
 - **pkg/neural**: Neural network implementations (policy and value networks)
 - **pkg/mcts**: Monte Carlo Tree Search implementation
 - **pkg/training**: Self-play and training logic
-- **cmd/rps_card**: Main application entry point
 
 ## Components
 
@@ -46,42 +45,45 @@ The system trains by playing against itself, using the results to improve the ne
 
 ## How to Run
 
-### Building the Game
-To build the RPS card game, run the build script:
+### Training Neural Networks
+
+The primary focus of this project is training and comparing different neural network models. You can train the networks with different parameters using these commands:
 
 ```bash
-cd alphago_demo
-./build.sh
+# Train with default parameters (small training dataset)
+make train-and-compete
+
+# Train with large dataset comparison (100 vs 1000 games)
+make train-large-comparison
 ```
 
-This will compile the game and create a binary in the `bin` directory.
+The trained models will be saved to `alphago_demo/output/` directory.
 
-### Running the Game
-After building, you can run the game with:
+### Model Comparison
+
+After training multiple models with different parameters, the system automatically runs a tournament between them to evaluate performance. The tournament results show which training approach produces better agents.
+
+For more extensive model comparison, you can use the dedicated comparison tool:
 
 ```bash
+# Compare trained models with 100 games
+make compare-models
+
+# Or run directly with custom parameters
 cd alphago_demo
-./bin/rps_card
+./bin/compare_models --games 200 --model1-name "SmallModel" --model2-name "LargeModel" --verbose
 ```
 
-The game provides two modes:
-1. Play against AI - A human vs AI game mode
-2. Watch AI vs AI demonstration - An automated demonstration of AI playing against itself
+This tool provides detailed tournament results and saves them to the `alphago_demo/results/` directory for later analysis.
 
-## Running Tests
+### Running Tests
 
 Run the comprehensive test suite:
 
 ```bash
-./run_tests.sh
+cd alphago_demo
+go test -v ./...
 ```
-
-## Game Modes
-
-The application offers two modes:
-
-1. **Play against AI**: Challenge the trained AI in a game of RPS
-2. **AI vs AI demonstration**: Watch the AI play against itself
 
 ## Implementation Details
 
@@ -103,11 +105,12 @@ Key differences from the Tic-Tac-Toe implementation:
 ## Future Improvements
 
 Potential improvements include:
-- Adding card selection intelligence to the policy network
+- Adding card selection intelligence to the policy network  
 - Implementing a more sophisticated board representation
 - Extending to larger boards or more complex card types
 - Visualization of the MCTS search tree
 - Optimizing for performance with parallel MCTS
+- Human vs AI interface (currently out of scope)
 
 ## Technical Notes
 
@@ -118,21 +121,17 @@ Potential improvements include:
 
 ## Project Status
 
-All components of the RPS card game have been implemented and tested:
+All core components of the RPS card game have been implemented and tested:
 
 - ✅ Game logic (rules, board representation, card manipulation)
 - ✅ Neural network implementation (policy and value networks)
 - ✅ Monte Carlo Tree Search implementation
 - ✅ Self-play training mechanism
-- ✅ Game interface (console-based)
+- ✅ Model comparison through tournaments
 - ✅ Test suite for all components
-
-The game is now ready to play! Build and run the game using the instructions above.
 
 ## Conclusion
 
-This Rock-Paper-Scissors card game demonstrates the application of AlphaGo-style techniques to a card-based strategy game. The combination of neural networks and Monte Carlo Tree Search provides an AI opponent that can learn and improve through self-play.
+This Rock-Paper-Scissors card game demonstrates the application of AlphaGo-style techniques to a card-based strategy game. The combination of neural networks and Monte Carlo Tree Search provides AI agents that can learn and improve through self-play.
 
-The modular architecture allows for easy extension and modification of the game, such as adding new card types, changing board sizes, or implementing a graphical user interface.
-
-Enjoy playing! 
+The modular architecture allows for easy extension and modification of the game, such as adding new card types, changing board sizes, or implementing different neural network architectures. 

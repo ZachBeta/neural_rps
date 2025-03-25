@@ -96,11 +96,6 @@ func (n *AGValueNetwork) forward(input []float64) float64 {
 	return sigmoid(sum)
 }
 
-// sigmoid activation function that outputs a value between 0 and 1
-func sigmoid(x float64) float64 {
-	return 1.0 / (1.0 + math.Exp(-x))
-}
-
 // Train updates the network weights based on a batch of input features and target values
 // Returns the average loss across the batch
 func (n *AGValueNetwork) Train(inputFeatures [][]float64, targetValues []float64, learningRate float64) float64 {

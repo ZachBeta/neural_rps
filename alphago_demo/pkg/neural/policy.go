@@ -123,42 +123,6 @@ func (n *AGPolicyNetwork) forward(input []float64) []float64 {
 	return softmax(output)
 }
 
-// relu implements the ReLU activation function
-func relu(x float64) float64 {
-	if x > 0 {
-		return x
-	}
-	return 0
-}
-
-// softmax converts a vector of values to probabilities
-func softmax(x []float64) []float64 {
-	result := make([]float64, len(x))
-	sum := 0.0
-	max := -math.MaxFloat64
-
-	// Find the maximum value to avoid numerical instability
-	for _, v := range x {
-		if v > max {
-			max = v
-		}
-	}
-
-	// Calculate exp(x - max) and sum
-	for i, v := range x {
-		exp := math.Exp(v - max)
-		result[i] = exp
-		sum += exp
-	}
-
-	// Normalize to get probabilities
-	for i := range result {
-		result[i] /= sum
-	}
-
-	return result
-}
-
 // Train updates the network weights based on a batch of input features and target probabilities
 // Returns the average loss across the batch
 func (n *AGPolicyNetwork) Train(inputFeatures [][]float64, targetProbs [][]float64, learningRate float64) float64 {
