@@ -68,10 +68,10 @@ func main() {
 
 	// Create a neural network
 	nn := neural.NewNetwork(6, 12, 3)
-	fmt.Println("Neural network created!")
+	fmt.Println("Running Go Neural RPS Demo - Output will be saved to go_demo_output.txt")
 
 	// Create a visualizer
-	visualizer, err := neural.NewFileVisualizer("training_output.txt")
+	visualizer, err := neural.NewFileVisualizer("../go_demo_output.txt")
 	if err != nil {
 		fmt.Printf("Error creating visualizer: %v\n", err)
 		os.Exit(1)
@@ -105,12 +105,12 @@ func main() {
 	fmt.Println("Training complete!")
 
 	// Save the network weights
-	err = nn.SaveWeights("neural_rps_model.gob")
+	err = nn.SaveWeights("../go_neural_rps_model.gob")
 	if err != nil {
 		fmt.Printf("Error saving weights: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Println("Model saved to neural_rps_model.gob")
+	fmt.Println("Model saved to go_neural_rps_model.gob")
 
 	// Test the model with some examples
 	fmt.Println("\nTesting the model:")
@@ -142,5 +142,5 @@ func main() {
 		nil, // default hidden labels
 		[]string{"Rock", "Paper", "Scissors"})
 
-	fmt.Println("\nCheck training_output.txt for detailed visualization")
+	fmt.Println("\nCheck go_demo_output.txt for detailed visualization")
 }

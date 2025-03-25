@@ -28,7 +28,9 @@ void printGameState(const Environment& env, const PPOAgent& agent, bool to_file 
 
 int main() {
     // Initialize file output
-    NetworkVisualizer::initFileOutput();
+    NetworkVisualizer::initFileOutput("../cpp_demo_output.txt");
+    
+    std::cout << "Running C++ Neural RPS Demo - Output will be saved to cpp_demo_output.txt" << std::endl;
     
     Environment env;
     PPOAgent agent(9, 3);  // 9 state dimensions, 3 actions

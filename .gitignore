@@ -41,7 +41,6 @@ Testing/
 _deps/
 build/
 *.cmake
-Makefile
 
 # IDE specific files
 .vscode/

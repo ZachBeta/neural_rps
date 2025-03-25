@@ -4,6 +4,7 @@
 * ~~implement AlphaGo-style demo with MCTS and neural networks~~ ✅ DONE
 * ~~extract the cpp implementation into its own directory~~ ✅ DONE
 * ~~extract the first pass golang implementation into its own directory~~ ✅ DONE
+* ~~create demos to output comparison txt files~~ ✅ DONE
 * fix build warnings
 * hands need to be more complex
 * object oriented

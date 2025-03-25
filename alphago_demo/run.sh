@@ -4,6 +4,6 @@
 echo "Building AlphaGo-style Tic-Tac-Toe..."
 go build -o tictactoe cmd/tictactoe/main.go
 
-# Run the game
-echo "Starting the game..."
-./tictactoe 
+# Run the game and redirect output to file in parent directory
+echo "Starting the game... Output will be saved to alphago_demo_output.txt"
+./tictactoe | tee ../alphago_demo_output.txt 

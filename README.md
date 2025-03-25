@@ -63,6 +63,32 @@ Or use the build_all.sh script to build and run all implementations in sequence:
 
 Note: The C++ implementation requires the Eigen3 library to be installed on your system.
 
+## Running Demos and Comparing Output
+
+Each implementation can generate demo output to compare their approaches:
+
+```bash
+# Run all demos and generate output files
+make run-demos
+
+# Or use the dedicated script:
+./run_demos.sh
+```
+
+This will:
+1. Build all implementations
+2. Run a demo of each implementation
+3. Generate output files in the project root directory:
+   - `cpp_demo_output.txt` - C++ implementation output
+   - `go_demo_output.txt` - Golang implementation output
+   - `alphago_demo_output.txt` - AlphaGo demo output
+
+These files can be compared to understand the differences in how each implementation:
+- Represents the game state
+- Trains the neural network
+- Makes predictions
+- Visualizes the model and training process
+
 ## Installation
 
 1. Clone the repository:
