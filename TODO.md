@@ -1,12 +1,2 @@
-* ~~migrate this to golang so it's easier to read and has a more ergonomic dev/build/test setup~~ ✅ DONE
-* ~~confirm golang implementation is using paralellization features built into golang for best performance~~ ✅ DONE
-* ~~visualize neural network~~ ✅ DONE
-* ~~implement AlphaGo-style demo with MCTS and neural networks~~ ✅ DONE
-* ~~extract the cpp implementation into its own directory~~ ✅ DONE
-* ~~extract the first pass golang implementation into its own directory~~ ✅ DONE
-* ~~create demos to output comparison txt files~~ ✅ DONE
-* fix build warnings
-* hands need to be more complex
-* object oriented
-* use llvm toolchain?
-* use clang-tidy
+* move from tic tac toe to rps card game
+* we should be able to compare the 3 models using consistent output
