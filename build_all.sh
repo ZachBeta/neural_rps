@@ -19,15 +19,23 @@ echo ""
 echo "===== Running Implementations ====="
 
 # Run each implementation
-echo "1. Running C++ implementation (press Ctrl+C to stop)..."
+echo "1. Running Legacy C++ implementation (press Ctrl+C to stop)..."
+make run-legacy-cpp
+
+echo ""
+echo "2. Running C++ simplified demo..."
 make run-cpp
 
 echo ""
-echo "2. Running Golang implementation (press Ctrl+C to stop)..."
+echo "Note: You can also run the full C++ neural implementation with:"
+echo "make run-cpp-full"
+
+echo ""
+echo "3. Running Golang implementation (press Ctrl+C to stop)..."
 make run-go
 
 echo ""
-echo "3. Running AlphaGo demo (press Ctrl+C to stop)..."
+echo "4. Running AlphaGo demo (press Ctrl+C to stop)..."
 make run-alphago
 
 echo ""

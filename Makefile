@@ -1,7 +1,12 @@
-.PHONY: build run test test-coverage clean build-cpp build-go build-alphago run-demos
+.PHONY: build run test test-coverage clean build-legacy-cpp build-cpp build-go build-alphago run-demos run-cpp-full
 
 # Build all implementations
-build: build-go build-cpp build-alphago
+build: build-go build-cpp build-alphago build-legacy-cpp
+
+# Build the legacy C++ implementation
+build-legacy-cpp:
+	@echo "Building Legacy C++ implementation..."
+	cd legacy_cpp_implementation && mkdir -p build && cd build && cmake .. && make
 
 # Build the C++ implementation
 build-cpp:
@@ -22,8 +27,11 @@ build-alphago:
 run-demos: build
 	@echo "Running all implementation demos..."
 	@echo "---------------------------------"
-	@echo "Running C++ demo (this might fail if Eigen is not installed)..."
-	-cd cpp_implementation/build && ./neural_rps
+	@echo "Running Legacy C++ implementation demo (this will take a while)..."
+	-cd legacy_cpp_implementation/build && ./src/legacy_neural_rps
+	@echo "---------------------------------"
+	@echo "Running C++ simplified demo..."
+	-cd cpp_implementation/build && ./neural_rps_demo
 	@echo "---------------------------------"
 	@echo "Running Go implementation demo..."
 	cd golang_implementation && ./bin/neural_rps
@@ -32,9 +40,13 @@ run-demos: build
 	cd alphago_demo && ./run.sh
 	@echo "---------------------------------"
 	@echo "All demos completed. Output files generated in project root:"
-	@echo "- cpp_demo_output.txt (if C++ demo ran successfully)"
+	@echo "- legacy_cpp_demo_output.txt (from legacy C++ implementation)"
+	@echo "- cpp_demo_output.txt (from simplified C++ demo)"
 	@echo "- go_demo_output.txt"
 	@echo "- alphago_demo_output.txt"
+	@echo ""
+	@echo "Note: The full C++ neural implementation can be run with:"
+	@echo "make run-cpp-full"
 
 # Run tests for all implementations
 test: test-go
@@ -56,8 +68,9 @@ clean:
 	rm -rf golang_implementation/bin/
 	rm -rf golang_implementation/coverage.out golang_implementation/coverage.html
 	rm -rf cpp_implementation/build/
+	rm -rf legacy_cpp_implementation/build/
 	rm -f alphago_demo/tictactoe
-	rm -f cpp_demo_output.txt go_demo_output.txt alphago_demo_output.txt go_neural_rps_model.gob
+	rm -f cpp_demo_output.txt legacy_cpp_demo_output.txt go_demo_output.txt alphago_demo_output.txt go_neural_rps_model.gob
 
 # Run the Golang program
 run-go: build-go
@@ -69,10 +82,20 @@ run-alphago: build-alphago
 	@echo "Running AlphaGo demo..."
 	./alphago_demo/tictactoe
 
-# Run the C++ implementation
+# Run the legacy C++ implementation
+run-legacy-cpp: build-legacy-cpp
+	@echo "Running Legacy C++ implementation..."
+	./legacy_cpp_implementation/build/src/legacy_neural_rps
+
+# Run the C++ implementation (simplified demo version)
 run-cpp: build-cpp
-	@echo "Running C++ implementation..."
-	./cpp_implementation/build/neural_rps
+	@echo "Running C++ simplified demo..."
+	./cpp_implementation/build/neural_rps_demo
+
+# Run the full C++ implementation
+run-cpp-full: build-cpp
+	@echo "Running C++ full neural implementation (will run for a while)..."
+	./cpp_implementation/build/neural_rps_full
 
 # Install dependencies
 deps:

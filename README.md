@@ -6,9 +6,10 @@ A neural network-based implementation of Rock Paper Scissors using different app
 
 This project explores different implementations of neural networks for playing Rock Paper Scissors:
 
-1. **C++ Implementation** - The original implementation with basic neural network functionality
-2. **Golang Implementation** - An improved implementation with better readability, performance, and development setup
-3. **AlphaGo-Style Demo** - A demonstration of AlphaGo-like techniques applied to Tic-Tac-Toe
+1. **Legacy C++ Implementation** - The original, fully-functional implementation with complete neural network
+2. **C++ Implementation** - A simplified demonstration implementation
+3. **Golang Implementation** - An improved implementation with better readability, performance, and development setup
+4. **AlphaGo-Style Demo** - A demonstration of AlphaGo-like techniques applied to Tic-Tac-Toe
 
 ## Features
 
@@ -23,7 +24,8 @@ This project explores different implementations of neural networks for playing R
 
 ```
 .
-├── cpp_implementation/        # Original C++ implementation
+├── legacy_cpp_implementation/ # Original fully-functional C++ implementation
+├── cpp_implementation/        # Simplified C++ demonstration
 ├── golang_implementation/     # First-pass Golang implementation
 ├── alphago_demo/              # AlphaGo-style Tic-Tac-Toe demo
 └── output/                    # Training output and visualizations
@@ -32,8 +34,8 @@ This project explores different implementations of neural networks for playing R
 ## Requirements
 
 - Go 1.16 or later for the Golang implementation and AlphaGo demo
-- C++17 compatible compiler for the C++ implementation
-- Eigen3 library for the C++ implementation (matrix operations)
+- C++17 compatible compiler for the C++ implementations
+- Eigen3 library for the C++ implementations (matrix operations)
   - On macOS: `brew install eigen`
   - On Ubuntu: `apt-get install libeigen3-dev`
 
@@ -130,6 +132,7 @@ make run-alphago
 
 Each implementation has its own README in its respective directory with more detailed information:
 
+- [Legacy C++ Implementation](legacy_cpp_implementation/README.md)
 - [C++ Implementation](cpp_implementation/README.md)
 - [Golang Implementation](golang_implementation/README.md)
 - [AlphaGo Demo](alphago_demo/README.md)
