@@ -2,179 +2,145 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"math/rand"
+	"os"
 	"time"
 
-	"github.com/zachbeta/neural_rps/pkg/agent"
-	"github.com/zachbeta/neural_rps/pkg/game"
-	"github.com/zachbeta/neural_rps/pkg/visualizer"
+	"github.com/zachbeta/neural_rps/pkg/neural"
 )
 
-func main() {
-	// Initialize visualizer
-	viz, err := visualizer.NewVisualizer("output")
-	if err != nil {
-		log.Fatalf("Failed to initialize visualizer: %v", err)
-	}
-	defer viz.Close()
+const (
+	Rock     = 0
+	Paper    = 1
+	Scissors = 2
+)
 
-	// Initialize environment and agent
-	env := game.NewEnvironment()
-	ppoAgent := agent.NewPPOAgent(9, 3) // 9 state dimensions, 3 actions
+var moveNames = []string{"Rock", "Paper", "Scissors"}
+
+// Create one-hot encoding for a move
+func encodeMove(move int) []float64 {
+	encoding := make([]float64, 3)
+	encoding[move] = 1.0
+	return encoding
+}
+
+// Generate training data for the neural network
+func generateTrainingData(numSamples int) ([][]float64, [][]float64) {
+	inputs := make([][]float64, numSamples)
+	targets := make([][]float64, numSamples)
+
+	// Create some patterns
+	// Pattern 1: If opponent played rock, play paper
+	// Pattern 2: If opponent played paper, play scissors
+	// Pattern 3: If opponent played scissors, play rock
+	for i := 0; i < numSamples; i++ {
+		// Randomly select opponent's previous move
+		prevOpponentMove := rand.Intn(3)
+
+		// Select the winning move based on the pattern
+		var bestMove int
+		switch prevOpponentMove {
+		case Rock:
+			bestMove = Paper
+		case Paper:
+			bestMove = Scissors
+		case Scissors:
+			bestMove = Rock
+		}
+
+		// Create input as one-hot encoding of opponent's previous move
+		input := make([]float64, 6)     // room for prev player and opponent moves
+		input[prevOpponentMove+3] = 1.0 // opponent's move in second half
+
+		// Create target as one-hot encoding of best move
+		target := encodeMove(bestMove)
+
+		inputs[i] = input
+		targets[i] = target
+	}
+
+	return inputs, targets
+}
+
+func main() {
+	// Seed random number generator
+	rand.Seed(time.Now().UnixNano())
+
+	// Create a neural network
+	nn := neural.NewNetwork(6, 12, 3)
+	fmt.Println("Neural network created!")
+
+	// Create a visualizer
+	visualizer, err := neural.NewFileVisualizer("training_output.txt")
+	if err != nil {
+		fmt.Printf("Error creating visualizer: %v\n", err)
+		os.Exit(1)
+	}
+	defer visualizer.Close()
 
 	// Visualize network architecture
-	layerSizes := []int{9, 64, 3}
-	layerNames := []string{"Input", "Hidden", "Output"}
-	if err := viz.VisualizeArchitecture(layerSizes, layerNames); err != nil {
-		log.Printf("Warning: Failed to visualize architecture: %v", err)
+	visualizer.VisualizeArchitecture(nn, []string{"Input", "Hidden", "Output"})
+	visualizer.VisualizeNetworkGraphical(nn)
+
+	// Generate training data
+	fmt.Println("Generating training data...")
+	inputs, targets := generateTrainingData(1000)
+	fmt.Printf("Generated %d training samples\n", len(inputs))
+
+	// Set up training options
+	options := neural.TrainingOptions{
+		LearningRate: 0.01,
+		Epochs:       500,
+		BatchSize:    32,
+		Parallel:     true,
 	}
 
-	// Training parameters
-	numEpisodes := 1000
-	episodesPerUpdate := 10
+	// Train the network
+	fmt.Println("Training neural network...")
+	err = nn.Train(inputs, targets, options)
+	if err != nil {
+		fmt.Printf("Error training network: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Training complete!")
 
-	// Training buffers
-	states := make([][]float64, 0)
-	actions := make([]int, 0)
-	rewards := make([]float64, 0)
-	values := make([]float64, 0)
-	episodeRewards := make([]float64, 0)
+	// Save the network weights
+	err = nn.SaveWeights("neural_rps_model.gob")
+	if err != nil {
+		fmt.Printf("Error saving weights: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Model saved to neural_rps_model.gob")
 
-	var totalReward float64
+	// Test the model with some examples
+	fmt.Println("\nTesting the model:")
+	testExamples := []int{Rock, Paper, Scissors}
+	outputLabels := []string{"Rock", "Paper", "Scissors"}
 
-	fmt.Println("Starting training...")
-	if err := viz.WriteToFile("Starting training...\n"); err != nil {
-		log.Printf("Warning: Failed to write to file: %v", err)
+	for _, prevOpponentMove := range testExamples {
+		// Create input with opponent's previous move
+		input := make([]float64, 6)     // room for prev player and opponent moves
+		input[prevOpponentMove+3] = 1.0 // opponent's move in second half
+
+		// Get the network's prediction
+		output := nn.Forward(input)
+		prediction := nn.Predict(input)
+
+		fmt.Printf("If opponent played %s, AI predicts: %s\n",
+			moveNames[prevOpponentMove],
+			moveNames[prediction])
+
+		// Visualize the prediction
+		visualizer.VisualizePrediction(nn, input, output,
+			[]string{"PlayerRock", "PlayerPaper", "PlayerScissors", "OpponentRock", "OpponentPaper", "OpponentScissors"},
+			outputLabels)
 	}
 
-	// Define labels for visualization
-	inputLabels := []string{
-		"LastW", "LastM", "LastA",
-		"HandW", "HandM", "HandA",
-		"OppW", "OppM", "OppA",
-	}
-	outputLabels := []string{"Warrior", "Mage", "Archer"}
+	// Visualize the weights
+	visualizer.VisualizeWeights(nn,
+		[]string{"PlayerRock", "PlayerPaper", "PlayerScissors", "OpponentRock", "OpponentPaper", "OpponentScissors"},
+		nil, // default hidden labels
+		[]string{"Rock", "Paper", "Scissors"})
 
-	// Training loop
-	for episode := 0; episode < numEpisodes; episode++ {
-		env.Reset()
-		var episodeReward float64
-
-		for {
-			state := env.GetState()
-			validActions := make([]int, 0)
-			for i := 0; i < 3; i++ {
-				if env.IsValidAction(game.CardType(i)) {
-					validActions = append(validActions, i)
-				}
-			}
-
-			// Get action from policy
-			action := ppoAgent.SampleAction(state, validActions)
-			value := ppoAgent.GetValue(state)
-
-			// Take action in environment
-			reward, done := env.Step(game.CardType(action))
-			episodeReward += reward
-
-			// Store transition
-			states = append(states, state)
-			actions = append(actions, action)
-			rewards = append(rewards, reward)
-			values = append(values, value)
-
-			// Visualize every 100 episodes
-			if episode%100 == 0 {
-				probs := ppoAgent.GetPolicyProbs(state)
-				if err := viz.VisualizeActionProbs(probs, outputLabels); err != nil {
-					log.Printf("Warning: Failed to visualize action probs: %v", err)
-				}
-				time.Sleep(500 * time.Millisecond)
-			}
-
-			if done {
-				break
-			}
-		}
-
-		totalReward += episodeReward
-		episodeRewards = append(episodeRewards, episodeReward)
-
-		// Update policy every episodesPerUpdate episodes
-		if (episode+1)%episodesPerUpdate == 0 {
-			ppoAgent.Update(states, actions, rewards, values)
-			states = states[:0]
-			actions = actions[:0]
-			rewards = rewards[:0]
-			values = values[:0]
-
-			avgReward := totalReward / float64(episodesPerUpdate)
-			fmt.Printf("Episode %d, Average Reward: %.3f\n", episode+1, avgReward)
-			if err := viz.WriteToFile(fmt.Sprintf("Episode %d, Average Reward: %.3f\n", episode+1, avgReward)); err != nil {
-				log.Printf("Warning: Failed to write to file: %v", err)
-			}
-
-			// Visualize weights and training progress
-			if (episode+1)%100 == 0 {
-				if err := viz.VisualizeWeights([][]float64{}, inputLabels, outputLabels); err != nil {
-					log.Printf("Warning: Failed to visualize weights: %v", err)
-				}
-				if err := viz.VisualizeTrainingProgress(episodeRewards, 100); err != nil {
-					log.Printf("Warning: Failed to visualize training progress: %v", err)
-				}
-			}
-
-			totalReward = 0
-		}
-	}
-
-	fmt.Println("\nTraining completed!")
-	if err := viz.WriteToFile("\nTraining completed!\n"); err != nil {
-		log.Printf("Warning: Failed to write to file: %v", err)
-	}
-
-	// Play demonstration games
-	fmt.Println("\nPlaying demonstration games...")
-	if err := viz.WriteToFile("\nPlaying demonstration games...\n"); err != nil {
-		log.Printf("Warning: Failed to write to file: %v", err)
-	}
-
-	for i := 0; i < 3; i++ {
-		env.Reset()
-		fmt.Printf("\nGame %d:\n", i+1)
-		if err := viz.WriteToFile(fmt.Sprintf("\nGame %d:\n", i+1)); err != nil {
-			log.Printf("Warning: Failed to write to file: %v", err)
-		}
-
-		for {
-			state := env.GetState()
-			validActions := make([]int, 0)
-			for i := 0; i < 3; i++ {
-				if env.IsValidAction(game.CardType(i)) {
-					validActions = append(validActions, i)
-				}
-			}
-
-			probs := ppoAgent.GetPolicyProbs(state)
-			if err := viz.VisualizeActionProbs(probs, outputLabels); err != nil {
-				log.Printf("Warning: Failed to visualize action probs: %v", err)
-			}
-
-			action := ppoAgent.SampleAction(state, validActions)
-			reward, done := env.Step(game.CardType(action))
-
-			move := fmt.Sprintf("Agent played: %s, Reward: %.2f\n",
-				game.NewCard(game.CardType(action)).Name(), reward)
-			fmt.Print(move)
-			if err := viz.WriteToFile(move); err != nil {
-				log.Printf("Warning: Failed to write to file: %v", err)
-			}
-
-			time.Sleep(1000 * time.Millisecond)
-
-			if done {
-				break
-			}
-		}
-	}
+	fmt.Println("\nCheck training_output.txt for detailed visualization")
 }

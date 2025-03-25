@@ -74,6 +74,76 @@ The program generates visualizations in the `output` directory:
 - Action probabilities
 - Training progress
 
+## Neural Network Implementation in Go
+
+The neural network has been implemented in Go for better readability, performance, and developer experience. The implementation features:
+
+### Architecture
+
+- Simple feed-forward neural network with three layers:
+  - Input layer: 6 neurons (for encoding both player and opponent previous moves)
+  - Hidden layer: 12 neurons with ReLU activation
+  - Output layer: 3 neurons with softmax activation
+
+### Features
+
+- **Parallelized Training**: Utilizes Go's goroutines for efficient parallel processing during training
+- **Batch Processing**: Supports mini-batch gradient descent for improved training efficiency
+- **Xavier Initialization**: Weights initialized using Xavier/Glorot initialization for better convergence
+- **Visualization**: Built-in visualization tools for network architecture and training progress
+- **Persistence**: Save and load network weights using Go's encoding/gob
+
+### Usage
+
+Create and train a neural network:
+
+```go
+// Create a new neural network with 6 inputs, 12 hidden neurons, and 3 outputs
+nn := neural.NewNetwork(6, 12, 3)
+
+// Set up training options
+options := neural.TrainingOptions{
+    LearningRate: 0.01,
+    Epochs:       500,
+    BatchSize:    32,
+    Parallel:     true,
+}
+
+// Train the network
+nn.Train(inputs, targets, options)
+
+// Make predictions
+prediction := nn.Predict(input)
+
+// Save the trained model
+nn.SaveWeights("model.gob")
+
+// Load a saved model
+nn.LoadWeights("model.gob")
+```
+
+Visualize the network:
+
+```go
+// Create a visualizer that writes to a file
+visualizer, _ := neural.NewFileVisualizer("output.txt")
+defer visualizer.Close()
+
+// Visualize network architecture
+visualizer.VisualizeArchitecture(nn, []string{"Input", "Hidden", "Output"})
+visualizer.VisualizeNetworkGraphical(nn)
+
+// Visualize weights
+visualizer.VisualizeWeights(nn, inputLabels, hiddenLabels, outputLabels)
+
+// Visualize predictions
+visualizer.VisualizePrediction(nn, input, output, inputLabels, outputLabels)
+```
+
+### Example
+
+See `cmd/neural_rps/main.go` for a complete example of training a neural network to play Rock, Paper, Scissors.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

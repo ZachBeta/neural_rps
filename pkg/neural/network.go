@@ -1,34 +1,127 @@
 package neural
 
 import (
-	"encoding/binary"
+	"encoding/gob"
+	"fmt"
 	"math"
+	"math/rand"
 	"os"
-
-	"gonum.org/v1/gonum/mat"
 )
 
-// Network represents a neural network
+// Network represents a simple feed-forward neural network
 type Network struct {
-	inputSize   int
-	hiddenSize  int
-	outputSize  int
-	hiddenLayer *Layer
-	outputLayer *Layer
+	// Network architecture
+	InputSize  int
+	HiddenSize int
+	OutputSize int
+
+	// Network parameters
+	Weights1 [][]float64 // Input -> Hidden weights
+	Bias1    []float64   // Hidden layer bias
+	Weights2 [][]float64 // Hidden -> Output weights
+	Bias2    []float64   // Output layer bias
 }
 
-// NewNetwork creates a new neural network
+// NewNetwork creates a new neural network with the specified architecture
 func NewNetwork(inputSize, hiddenSize, outputSize int) *Network {
-	return &Network{
-		inputSize:   inputSize,
-		hiddenSize:  hiddenSize,
-		outputSize:  outputSize,
-		hiddenLayer: NewLayer(inputSize, hiddenSize),
-		outputLayer: NewLayer(hiddenSize, outputSize),
+	nn := &Network{
+		InputSize:  inputSize,
+		HiddenSize: hiddenSize,
+		OutputSize: outputSize,
+		Weights1:   make([][]float64, hiddenSize),
+		Bias1:      make([]float64, hiddenSize),
+		Weights2:   make([][]float64, outputSize),
+		Bias2:      make([]float64, outputSize),
 	}
+
+	// Initialize weights with Xavier initialization
+	w1Bound := math.Sqrt(6.0 / float64(inputSize+hiddenSize))
+	w2Bound := math.Sqrt(6.0 / float64(hiddenSize+outputSize))
+
+	// Initialize Weights1
+	for i := 0; i < hiddenSize; i++ {
+		nn.Weights1[i] = make([]float64, inputSize)
+		for j := 0; j < inputSize; j++ {
+			nn.Weights1[i][j] = (rand.Float64()*2 - 1) * w1Bound
+		}
+		nn.Bias1[i] = 0.0
+	}
+
+	// Initialize Weights2
+	for i := 0; i < outputSize; i++ {
+		nn.Weights2[i] = make([]float64, hiddenSize)
+		for j := 0; j < hiddenSize; j++ {
+			nn.Weights2[i][j] = (rand.Float64()*2 - 1) * w2Bound
+		}
+		nn.Bias2[i] = 0.0
+	}
+
+	return nn
 }
 
-// relu implements the ReLU activation function
+// Forward performs a forward pass through the network
+func (nn *Network) Forward(input []float64) []float64 {
+	if len(input) != nn.InputSize {
+		panic(fmt.Sprintf("Input size mismatch: expected %d, got %d", nn.InputSize, len(input)))
+	}
+
+	// Hidden layer
+	hidden := make([]float64, nn.HiddenSize)
+	for i := 0; i < nn.HiddenSize; i++ {
+		sum := nn.Bias1[i]
+		for j := 0; j < nn.InputSize; j++ {
+			sum += nn.Weights1[i][j] * input[j]
+		}
+		hidden[i] = relu(sum)
+	}
+
+	// Output layer
+	output := make([]float64, nn.OutputSize)
+	for i := 0; i < nn.OutputSize; i++ {
+		sum := nn.Bias2[i]
+		for j := 0; j < nn.HiddenSize; j++ {
+			sum += nn.Weights2[i][j] * hidden[j]
+		}
+		output[i] = sum
+	}
+
+	// Apply softmax to get probabilities
+	return softmax(output)
+}
+
+// Predict predicts the best move based on the input
+func (nn *Network) Predict(input []float64) int {
+	output := nn.Forward(input)
+	return argmax(output)
+}
+
+// SaveWeights saves the network weights to a file
+func (nn *Network) SaveWeights(filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := gob.NewEncoder(file)
+	return encoder.Encode(nn)
+}
+
+// LoadWeights loads the network weights from a file
+func (nn *Network) LoadWeights(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	decoder := gob.NewDecoder(file)
+	return decoder.Decode(nn)
+}
+
+// Helper functions
+
+// relu implements the Rectified Linear Unit activation function
 func relu(x float64) float64 {
 	if x > 0 {
 		return x
@@ -36,7 +129,7 @@ func relu(x float64) float64 {
 	return 0
 }
 
-// reluDerivative implements the derivative of ReLU
+// reluDerivative returns the derivative of the ReLU function
 func reluDerivative(x float64) float64 {
 	if x > 0 {
 		return 1
@@ -44,151 +137,43 @@ func reluDerivative(x float64) float64 {
 	return 0
 }
 
-// softmax implements the softmax activation function
+// softmax applies the softmax function to convert logits to probabilities
 func softmax(x []float64) []float64 {
-	max := x[0]
+	result := make([]float64, len(x))
+	sum := 0.0
+	max := -math.MaxFloat64
+
+	// Find the maximum value to avoid overflow
 	for _, v := range x {
 		if v > max {
 			max = v
 		}
 	}
 
-	sum := 0.0
-	exp := make([]float64, len(x))
+	// Calculate exp(x - max) and sum
 	for i, v := range x {
-		exp[i] = math.Exp(v - max)
-		sum += exp[i]
+		exp := math.Exp(v - max)
+		result[i] = exp
+		sum += exp
 	}
 
-	for i := range exp {
-		exp[i] /= sum
+	// Normalize
+	for i := range result {
+		result[i] /= sum
 	}
-	return exp
+
+	return result
 }
 
-// Forward performs a forward pass through the network
-func (n *Network) Forward(input []float64) []float64 {
-	// Convert input to vector
-	inputVec := mat.NewVecDense(len(input), input)
-
-	// Forward pass through hidden layer
-	hiddenOutput := n.hiddenLayer.Forward(inputVec)
-
-	// Forward pass through output layer
-	output := n.outputLayer.Forward(hiddenOutput)
-
-	// Convert output to slice
-	outputSlice := make([]float64, n.outputSize)
-	for i := 0; i < n.outputSize; i++ {
-		outputSlice[i] = output.AtVec(i)
-	}
-
-	return outputSlice
-}
-
-// Backward performs backpropagation through the network
-func (n *Network) Backward(input []float64, output []float64, gradients []float64, learningRate float64) {
-	// Convert input to vector format
-	inputVec := mat.NewVecDense(len(input), input)
-	outputVec := mat.NewVecDense(len(output), output)
-	gradientVec := mat.NewVecDense(len(gradients), gradients)
-
-	// Forward pass to compute hidden layer activations
-	hiddenOutput := n.hiddenLayer.Forward(inputVec)
-
-	// Output layer gradients
-	outputGrads := mat.NewVecDense(n.outputSize, nil)
-	outputGrads.SubVec(outputVec, gradientVec)
-	outputGrads.ScaleVec(-1, outputGrads)
-
-	// Backward pass through output layer
-	hiddenGrads, _ := n.outputLayer.Backward(hiddenOutput, outputVec, outputGrads, learningRate)
-
-	// Apply ReLU derivative to hidden gradients
-	for i := 0; i < n.hiddenSize; i++ {
-		if hiddenOutput.AtVec(i) <= 0 {
-			hiddenGrads.SetVec(i, 0)
+// argmax returns the index of the maximum value in an array
+func argmax(x []float64) int {
+	maxIdx := 0
+	maxVal := x[0]
+	for i := 1; i < len(x); i++ {
+		if x[i] > maxVal {
+			maxVal = x[i]
+			maxIdx = i
 		}
 	}
-
-	// Backward pass through hidden layer
-	_, _ = n.hiddenLayer.Backward(inputVec, hiddenOutput, hiddenGrads, learningRate)
-}
-
-// dotProduct computes the dot product of two slices
-func dotProduct(a, b []float64) float64 {
-	sum := 0.0
-	for i := range a {
-		sum += a[i] * b[i]
-	}
-	return sum
-}
-
-// SaveWeights saves the network weights to a file
-func (n *Network) SaveWeights(filename string) error {
-	// TODO: Implement weight saving
-	return nil
-}
-
-// LoadWeights loads the network weights from a file
-func (n *Network) LoadWeights(filename string) error {
-	// TODO: Implement weight loading
-	return nil
-}
-
-// Helper functions for file I/O
-func writeInt(file *os.File, value int) error {
-	return binary.Write(file, binary.LittleEndian, int32(value))
-}
-
-func readInt(file *os.File) int {
-	var value int32
-	binary.Read(file, binary.LittleEndian, &value)
-	return int(value)
-}
-
-func writeMatrix(file *os.File, m mat.Matrix) error {
-	r, c := m.Dims()
-	writeInt(file, r)
-	writeInt(file, c)
-	for i := 0; i < r; i++ {
-		for j := 0; j < c; j++ {
-			if err := binary.Write(file, binary.LittleEndian, m.At(i, j)); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func readMatrix(file *os.File, rows, cols int) *mat.Dense {
-	m := mat.NewDense(rows, cols, nil)
-	for i := 0; i < rows; i++ {
-		for j := 0; j < cols; j++ {
-			var value float64
-			binary.Read(file, binary.LittleEndian, &value)
-			m.Set(i, j, value)
-		}
-	}
-	return m
-}
-
-func writeVector(file *os.File, v mat.Vector) error {
-	writeInt(file, v.Len())
-	for i := 0; i < v.Len(); i++ {
-		if err := binary.Write(file, binary.LittleEndian, v.AtVec(i)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func readVector(file *os.File, length int) *mat.VecDense {
-	v := mat.NewVecDense(length, nil)
-	for i := 0; i < length; i++ {
-		var value float64
-		binary.Read(file, binary.LittleEndian, &value)
-		v.SetVec(i, value)
-	}
-	return v
+	return maxIdx
 }
