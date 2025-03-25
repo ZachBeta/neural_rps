@@ -187,17 +187,24 @@ func (sp *AGSelfPlay) extractPolicy(node *mcts.AGMCTSNode) []float64 {
 	return policy
 }
 
-// TrainNetworks trains the policy and value networks
-func (sp *AGSelfPlay) TrainNetworks(numEpochs int, batchSize int, learningRate float64, verbose bool) {
+// TrainNetworks trains both policy and value networks using the collected examples
+func (sp *AGSelfPlay) TrainNetworks(numEpochs int, batchSize int, learningRate float64, verbose bool) ([]float64, []float64) {
+	// Check if we have examples
 	if len(sp.examples) == 0 {
-		fmt.Println("No training examples available. Generate games first.")
-		return
+		if verbose {
+			fmt.Println("No training examples to learn from!")
+		}
+		return nil, nil
 	}
 
-	// Shuffle examples
+	// Shuffle examples for better learning
 	rand.Shuffle(len(sp.examples), func(i, j int) {
 		sp.examples[i], sp.examples[j] = sp.examples[j], sp.examples[i]
 	})
+
+	// Track losses for each epoch
+	policyLosses := make([]float64, numEpochs)
+	valueLosses := make([]float64, numEpochs)
 
 	// Train networks
 	for epoch := 0; epoch < numEpochs; epoch++ {
@@ -240,9 +247,15 @@ func (sp *AGSelfPlay) TrainNetworks(numEpochs int, batchSize int, learningRate f
 			valueLoss /= float64(batchCount)
 		}
 
+		// Store the losses
+		policyLosses[epoch] = policyLoss
+		valueLosses[epoch] = valueLoss
+
 		if verbose || epoch%10 == 0 {
 			fmt.Printf("Epoch %d/%d - Policy Loss: %.4f, Value Loss: %.4f\n",
 				epoch+1, numEpochs, policyLoss, valueLoss)
 		}
 	}
+
+	return policyLosses, valueLosses
 }

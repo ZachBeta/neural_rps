@@ -26,7 +26,7 @@ Training Process
 ==================================================
 Training Episodes: 100
 Final Average Reward: -0.400
-Training Time: 0.5s
+Training Time: 3.2s
 
 Training Progress:
 Episode 10, Average Reward: -0.200
@@ -65,4 +65,4 @@ Biases: 12 hidden, 3 output
 Weight Ranges:
   Min: -0.7214
   Max: 1.9542
-  Mean: 0.1162
+  Mean: 0.1162 

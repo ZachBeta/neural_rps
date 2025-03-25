@@ -1,0 +1,72 @@
+==================================================
+Neural Rock Paper Scissors - Go Implementation
+==================================================
+Version: 1.0
+Implementation Type: Neural Network with PPO
+
+==================================================
+Network Architecture
+==================================================
+Input Layer: 6 neurons (game state encoding)
+Hidden Layer: 12 neurons (ReLU activation)
+Output Layer: 3 neurons (Softmax activation)
+
+Network Visualization:
+     - (O) -     
+     -     -     
+     - (O) -     
+     -     -     
+ (O) - (O) -     
+     -     -     
+ (O) - (O) -     
+     -     - (O) 
+ (O) - (O) -     
+     -     - (O) 
+ (O) - (O) -     
+     -     - (O) 
+ (O) - (O) -     
+     -     -     
+     - (O) -     
+Input-Hidden-Output
+
+==================================================
+Training Process
+==================================================
+Training Episodes: 1000
+Final Average Reward: 0.450
+Training Time: 2.5s
+
+Training Progress:
+[------------------------>] 100%
+Initial Reward: -0.200
+Final Reward: 0.450
+
+==================================================
+Model Predictions
+==================================================
+Input: Opponent played Rock
+Output: 0.07% Rock, 99.88% Paper, 0.05% Scissors
+Prediction: Paper
+
+Input: Opponent played Paper
+Output: 0.05% Rock, 0.07% Paper, 99.88% Scissors
+Prediction: Scissors
+
+Input: Opponent played Scissors
+Output: 99.90% Rock, 0.04% Paper, 0.05% Scissors
+Prediction: Rock
+
+==================================================
+Model Parameters (Optional)
+==================================================
+Input to Hidden Weights:
+          PlayerRockPlayerPaperPlayerScissorsOpponentRockOpponentPaperOpponentScissorsBias      
+H0        0.3831    0.3230    0.5167    -0.5273   0.3558    0.0776    0.2644    
+H1        -0.5378   0.1502    0.5198    0.5275    0.6936    -0.3685   0.3685    
+...
+
+Hidden to Output Weights:
+          H0        H1        H2        H3        H4        H5        H6        H7        H8        H9        H10       H11       Bias      
+Rock      0.2930    -0.4475   0.0977    -0.5131   -0.1168   1.4556    -0.9578   1.1290    1.0691    -0.4997   -0.5873   -0.2615   -0.1521   
+Paper     -0.0632   0.3858    0.1448    -0.5418   0.5781    -1.1583   -0.6807   -0.6760   -0.0852   1.7301    0.1746    0.2488    -0.1361   
+Scissors  0.5476    0.8065    -0.2427   0.1721    -0.2202   -0.0439   1.3133    -0.3473   -0.3291   -1.5688   0.9854    0.3402    0.2881 

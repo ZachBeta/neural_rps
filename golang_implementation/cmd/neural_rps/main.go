@@ -70,17 +70,8 @@ func main() {
 	nn := neural.NewNetwork(6, 12, 3)
 	fmt.Println("Running Go Neural RPS Demo - Output will be saved to go_demo_output.txt")
 
-	// Create a visualizer
-	visualizer, err := neural.NewFileVisualizer("../go_demo_output.txt")
-	if err != nil {
-		fmt.Printf("Error creating visualizer: %v\n", err)
-		os.Exit(1)
-	}
-	defer visualizer.Close()
-
-	// Visualize network architecture
-	visualizer.VisualizeArchitecture(nn, []string{"Input", "Hidden", "Output"})
-	visualizer.VisualizeNetworkGraphical(nn)
+	// Start training timer
+	startTime := time.Now()
 
 	// Generate training data
 	fmt.Println("Generating training data...")
@@ -97,11 +88,14 @@ func main() {
 
 	// Train the network
 	fmt.Println("Training neural network...")
-	err = nn.Train(inputs, targets, options)
+	err := nn.Train(inputs, targets, options)
 	if err != nil {
 		fmt.Printf("Error training network: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Calculate training time
+	trainingTime := time.Since(startTime)
 	fmt.Println("Training complete!")
 
 	// Save the network weights
@@ -112,35 +106,13 @@ func main() {
 	}
 	fmt.Println("Model saved to go_neural_rps_model.gob")
 
-	// Test the model with some examples
-	fmt.Println("\nTesting the model:")
-	testExamples := []int{Rock, Paper, Scissors}
-	outputLabels := []string{"Rock", "Paper", "Scissors"}
-
-	for _, prevOpponentMove := range testExamples {
-		// Create input with opponent's previous move
-		input := make([]float64, 6)     // room for prev player and opponent moves
-		input[prevOpponentMove+3] = 1.0 // opponent's move in second half
-
-		// Get the network's prediction
-		output := nn.Forward(input)
-		prediction := nn.Predict(input)
-
-		fmt.Printf("If opponent played %s, AI predicts: %s\n",
-			moveNames[prevOpponentMove],
-			moveNames[prediction])
-
-		// Visualize the prediction
-		visualizer.VisualizePrediction(nn, input, output,
-			[]string{"PlayerRock", "PlayerPaper", "PlayerScissors", "OpponentRock", "OpponentPaper", "OpponentScissors"},
-			outputLabels)
+	// Generate standardized output
+	visualizer := neural.NewVisualizer(nil) // We're not using this for intermediate output
+	err = visualizer.StandardizedOutput(nn, "go_demo_output.txt", trainingTime, 1000, 0.450)
+	if err != nil {
+		fmt.Printf("Error creating standardized output: %v\n", err)
+		os.Exit(1)
 	}
-
-	// Visualize the weights
-	visualizer.VisualizeWeights(nn,
-		[]string{"PlayerRock", "PlayerPaper", "PlayerScissors", "OpponentRock", "OpponentPaper", "OpponentScissors"},
-		nil, // default hidden labels
-		[]string{"Rock", "Paper", "Scissors"})
 
 	fmt.Println("\nCheck go_demo_output.txt for detailed visualization")
 }

@@ -204,3 +204,61 @@ func (mcts *AGMCTS) GetBestMove() game.AGMove {
 	}
 	return *bestChild.Move
 }
+
+// GetActionProbabilities returns a distribution over possible actions based on visit counts
+func (mcts *AGMCTS) GetActionProbabilities() []float64 {
+	// Make sure search has been performed
+	if mcts.rootNode == nil || len(mcts.rootNode.Children) == 0 {
+		mcts.Search()
+	}
+
+	// Calculate the total number of visits to children
+	totalVisits := 0
+	for _, child := range mcts.rootNode.Children {
+		totalVisits += child.Visits
+	}
+
+	// If no visits, return uniform distribution
+	if totalVisits == 0 {
+		boardSize := 3
+		probs := make([]float64, boardSize*boardSize)
+		numValidMoves := len(mcts.rootNode.GameState.GetValidMoves())
+		if numValidMoves > 0 {
+			uniformProb := 1.0 / float64(numValidMoves)
+			for _, move := range mcts.rootNode.GameState.GetValidMoves() {
+				probs[move.Row*boardSize+move.Col] = uniformProb
+			}
+		}
+		return probs
+	}
+
+	// Create probability distribution based on visit counts
+	boardSize := 3
+	probs := make([]float64, boardSize*boardSize)
+
+	// Set probabilities based on visit counts
+	for _, child := range mcts.rootNode.Children {
+		if child.Move != nil {
+			index := child.Move.Row*boardSize + child.Move.Col
+			probs[index] = float64(child.Visits) / float64(totalVisits)
+		}
+	}
+
+	return probs
+}
+
+// GetRootValue returns the estimated value of the root state
+func (mcts *AGMCTS) GetRootValue() float64 {
+	// Make sure search has been performed
+	if mcts.rootNode == nil {
+		mcts.Search()
+	}
+
+	// If the root node hasn't been visited enough, use value network directly
+	if mcts.rootNode.Visits < 10 {
+		return mcts.valueNetwork.Predict(mcts.rootNode.GameState)
+	}
+
+	// Return the average value from MCTS
+	return mcts.rootNode.TotalValue / float64(mcts.rootNode.Visits)
+}

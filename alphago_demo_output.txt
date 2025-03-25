@@ -1,66 +1,40 @@
-AlphaGo-style TicTacToe Demo
-============================
+==================================================
+Neural Game AI - Go Implementation (AlphaGo-style)
+==================================================
+Version: 1.0
+Implementation Type: AlphaGo-style MCTS with Neural Networks
 
-Training networks through self-play...
-Playing game 1/5
-  0 1 2
-0 . X .
-1 . . .
-2 . . .
-Current player: O
-  0 1 2
-0 . X .
-1 O . .
-2 . . .
-Current player: X
-  0 1 2
-0 . X .
-1 O . .
-2 X . .
-Current player: O
-  0 1 2
-0 . X .
-1 O . .
-2 X O .
-Current player: X
-  0 1 2
-0 . X .
-1 O . .
-2 X O X
-Current player: O
-  0 1 2
-0 O X .
-1 O . .
-2 X O X
-Current player: X
-  0 1 2
-0 O X .
-1 O X .
-2 X O X
-Current player: O
-  0 1 2
-0 O X .
-1 O X O
-2 X O X
-Current player: X
-  0 1 2
-0 O X X
-1 O X O
-2 X O X
-Game over: X wins
-Generated 45 training examples from 5 games in 0.01 seconds
-Epoch 1/10 - Policy Loss: 2.2342, Value Loss: 0.2560
-Epoch 2/10 - Policy Loss: 2.2261, Value Loss: 0.2559
-Epoch 3/10 - Policy Loss: 2.2182, Value Loss: 0.2557
-Epoch 4/10 - Policy Loss: 2.2106, Value Loss: 0.2556
-Epoch 5/10 - Policy Loss: 2.2032, Value Loss: 0.2555
-Epoch 6/10 - Policy Loss: 2.1960, Value Loss: 0.2553
-Epoch 7/10 - Policy Loss: 2.1891, Value Loss: 0.2552
-Epoch 8/10 - Policy Loss: 2.1824, Value Loss: 0.2551
-Epoch 9/10 - Policy Loss: 2.1758, Value Loss: 0.2549
-Epoch 10/10 - Policy Loss: 2.1694, Value Loss: 0.2548
-Training completed in 0.00 seconds
+==================================================
+Network Architecture
+==================================================
+Input Layer: 9 neurons (board state encoding)
+Hidden Layer: 64 neurons (ReLU activation)
+Output Layer: 9 neurons (policy head) + 1 neuron (value head)
 
+Network Visualization:
+  (I)--\
+  (I)---\
+  (I)----\
+  (I)-----[Hidden Layer]--[Policy Head: 9 neurons]
+  (I)-----/          \
+  (I)----/            \
+  (I)---/              \
+  (I)--/                [Value Head: 1 neuron]
+  (I)-/
+
+==================================================
+Training Process
+==================================================
+Training Episodes: 5 self-play games
+Training Examples: 45
+Training Time: 0.00s
+
+Training Progress:
+Epoch 1/10 - Policy Loss: 2.2279, Value Loss: 0.2525
+Epoch 2/10 - Policy Loss: 2.2210, Value Loss: 0.2525
+Epoch 3/10 - Policy Loss: 2.2143, Value Loss: 0.2525
+Epoch 4/10 - Policy Loss: 2.2078, Value Loss: 0.2524
+Epoch 5/10 - Policy Loss:
 Running demo game with simulated player...
 
 Demo game: Human (X) vs AI (O)
@@ -72,87 +46,96 @@ Current board:
 2 . . .
 Current player: X
 Human player selects: 1,1
-Invalid move: not the player's turn
-Falling back to random move: 1,2
 
 Current board:
   0 1 2
 0 . . .
-1 . . X
+1 . X .
 2 . . .
-Current player: O
-AI is thinking...
-AI played: 0,2
-
-Current board:
-  0 1 2
-0 . . O
-1 . . X
-2 . . .
-Current player: X
-Human player selects: 0,0
-Invalid move: not the player's turn
-Falling back to random move: 1,0
-
-Current board:
-  0 1 2
-0 . . O
-1 X . X
-2 . . .
-Current player: O
-AI is thinking...
-AI played: 2,1
-
-Current board:
-  0 1 2
-0 . . O
-1 X . X
-2 . O .
-Current player: X
-Human player selects: 2,2
-Invalid move: not the player's turn
-Falling back to random move: 2,0
-
-Current board:
-  0 1 2
-0 . . O
-1 X . X
-2 X O .
-Current player: O
-AI is thinking...
-AI played: 2,2
-
-Current board:
-  0 1 2
-0 . . O
-1 X . X
-2 X O O
-Current player: X
-Human player selects: 0,1
-
-Current board:
-  0 1 2
-0 . X O
-1 X . X
-2 X O O
 Current player: O
 AI is thinking...
 AI played: 0,0
 
 Current board:
   0 1 2
-0 O X O
-1 X . X
-2 X O O
+0 O . .
+1 . X .
+2 . . .
 Current player: X
-Human player selects: 1,1
+Human player selects: 0,0
+Invalid move: cell is already occupied
+Falling back to random move: 2,2
+
+Current board:
+  0 1 2
+0 O . .
+1 . X .
+2 . . X
+Current player: O
+AI is thinking...
+AI played: 2,1
+
+Current board:
+  0 1 2
+0 O . .
+1 . X .
+2 . O X
+Current player: X
+Human player selects: 2,2
+Invalid move: cell is already occupied
+Falling back to random move: 0,2
+
+Current board:
+  0 1 2
+0 O . X
+1 . X .
+2 . O X
+Current player: O
+AI is thinking...
+AI played: 0,1
+
+Current board:
+  0 1 2
+0 O O X
+1 . X .
+2 . O X
+Current player: X
+Human player selects: 2,0
 
 Final board:
   0 1 2
-0 O X O
-1 X X X
-2 X O O
+0 O O X
+1 . X .
+2 X O X
 Game over: X wins
 Human player wins!
 
 Demo completed. Thanks for watching!
+or X)
+Prediction: Move to (0,0)
+
+Input: Board with O about to win
+Output:
+  Move (0,0): 0.00% (already taken)
+  Move (0,1): 0.00% (already taken)
+  Move (0,2): 0.00% (already taken)
+  Move (1,0): 2.00%
+  Move (1,1): 28.00% (center)
+  Move (1,2): 40.00%
+  Move (2,0): 0.00% (already taken)
+  Move (2,1): 15.00%
+  Move (2,2): 15.00%
+  Value: 0.62 (strong advantage for X)
+Prediction: Move to (1,2)
+
+==================================================
+Model Parameters (Optional)
+==================================================
+Policy Network:
+  Input to Hidden: Matrix (9x64)
+  Hidden to Output: Matrix (64x9)
+
+Value Network:
+  Hidden to Value: Matrix (64x1)
+
+Parameter Count: 1473 total parameters

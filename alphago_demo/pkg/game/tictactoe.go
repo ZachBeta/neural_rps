@@ -42,30 +42,50 @@ func NewAGGame() *AGGame {
 	}
 }
 
-// GetValidMoves returns all valid moves for the current game state
+// GetValidMoves returns a list of valid moves for the current player
 func (g *AGGame) GetValidMoves() []AGMove {
 	var moves []AGMove
+	if g.IsGameOver() {
+		return moves
+	}
+
 	for row := 0; row < 3; row++ {
 		for col := 0; col < 3; col++ {
 			if g.Board[row][col] == Empty {
-				moves = append(moves, AGMove{Row: row, Col: col, Player: g.CurrentPlayer})
+				moves = append(moves, AGMove{Row: row, Col: col})
 			}
 		}
 	}
 	return moves
 }
 
+// IsValidMove checks if a move is valid for the current game state
+func (g *AGGame) IsValidMove(move AGMove) bool {
+	// Check if the game is over
+	if g.IsGameOver() {
+		return false
+	}
+
+	// Check if the move is within bounds
+	if move.Row < 0 || move.Row >= 3 || move.Col < 0 || move.Col >= 3 {
+		return false
+	}
+
+	// Check if the position is empty
+	return g.Board[move.Row][move.Col] == Empty
+}
+
 // MakeMove applies a move to the game state
 func (g *AGGame) MakeMove(move AGMove) error {
+	// Set the player for this move
+	move.Player = g.CurrentPlayer
+
 	// Check if the move is valid
 	if move.Row < 0 || move.Row >= 3 || move.Col < 0 || move.Col >= 3 {
 		return errors.New("move is out of bounds")
 	}
 	if g.Board[move.Row][move.Col] != Empty {
 		return errors.New("cell is already occupied")
-	}
-	if move.Player != g.CurrentPlayer {
-		return errors.New("not the player's turn")
 	}
 
 	// Apply the move
@@ -84,7 +104,20 @@ func (g *AGGame) MakeMove(move AGMove) error {
 
 // IsGameOver checks if the game is over
 func (g *AGGame) IsGameOver() bool {
-	return g.GetWinner() != Empty || len(g.GetValidMoves()) == 0
+	// Check if there's a winner
+	if g.GetWinner() != Empty {
+		return true
+	}
+
+	// Check if the board is full (no empty spaces)
+	for row := 0; row < 3; row++ {
+		for col := 0; col < 3; col++ {
+			if g.Board[row][col] == Empty {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // GetWinner returns the winner of the game, or Empty if there is no winner yet
