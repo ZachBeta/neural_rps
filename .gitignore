@@ -78,5 +78,5 @@ go.work
 
 # Project specific
 bin/
-output/
+# output/ - we want to track output files
 *.log

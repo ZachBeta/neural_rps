@@ -1,0 +1,145 @@
+AlphaGo-Style Rock-Paper-Scissors Card Game
+===========================================
+Training neural networks through self-play...
+Generating 100 self-play games...
+Generated 1000 training examples.
+Training networks for 10 epochs...
+Epoch 1/10: Policy Loss = 2.2195, Value Loss = 0.0006
+Epoch 2/10: Policy Loss = 1.9125, Value Loss = 0.0002
+Epoch 3/10: Policy Loss = 1.8321, Value Loss = 0.0002
+Epoch 4/10: Policy Loss = 1.7906, Value Loss = 0.0001
+Epoch 5/10: Policy Loss = 1.7635, Value Loss = 0.0001
+Epoch 6/10: Policy Loss = 1.7432, Value Loss = 0.0001
+Epoch 7/10: Policy Loss = 1.7270, Value Loss = 0.0001
+Epoch 8/10: Policy Loss = 1.7136, Value Loss = 0.0001
+Epoch 9/10: Policy Loss = 1.7035, Value Loss = 0.0001
+Epoch 10/10: Policy Loss = 1.6944, Value Loss = 0.0001
+Training complete.
+
+Main Menu:
+1. Play against AI
+2. Watch AI vs AI demonstration
+3. Exit
+Select an option: 
+AI vs AI Demonstration
+=====================
+Initial state:
+  0 1 2
+0 . . .
+1 . . .
+2 . . .
+
+Player 1 Hand: S R P R S 
+Player 2 Hand: p r s s p 
+Current player: Player 1 (Round 1/10)
+
+Move 1
+Player 1 plays Paper at position (0,1)
+  0 1 2
+0 . P .
+1 . . .
+2 . . .
+
+Player 1 Hand: S R R S 
+Player 2 Hand: p r s s p 
+Current player: Player 2 (Round 1/10)
+
+Move 2
+Player 2 plays Scissors at position (0,2)
+  0 1 2
+0 . p s
+1 . . .
+2 . . .
+
+Player 1 Hand: S R R S 
+Player 2 Hand: p r s p 
+Current player: Player 1 (Round 2/10)
+
+Move 3
+Player 1 plays Rock at position (0,0)
+  0 1 2
+0 R p s
+1 . . .
+2 . . .
+
+Player 1 Hand: S R S 
+Player 2 Hand: p r s p 
+Current player: Player 2 (Round 2/10)
+
+Move 4
+Player 2 plays Paper at position (1,0)
+  0 1 2
+0 r p s
+1 p . .
+2 . . .
+
+Player 1 Hand: S R S 
+Player 2 Hand: r s p 
+Current player: Player 1 (Round 3/10)
+
+Move 5
+Player 1 plays Rock at position (1,1)
+  0 1 2
+0 r p s
+1 p R .
+2 . . .
+
+Player 1 Hand: S S 
+Player 2 Hand: r s p 
+Current player: Player 2 (Round 3/10)
+
+Move 6
+Player 2 plays Scissors at position (1,2)
+  0 1 2
+0 r p s
+1 p R s
+2 . . .
+
+Player 1 Hand: S S 
+Player 2 Hand: r p 
+Current player: Player 1 (Round 4/10)
+
+Move 7
+Player 1 plays Scissors at position (2,1)
+  0 1 2
+0 r p s
+1 p R s
+2 . S .
+
+Player 1 Hand: S 
+Player 2 Hand: r p 
+Current player: Player 2 (Round 4/10)
+
+Move 8
+Player 2 plays Paper at position (2,0)
+  0 1 2
+0 r p s
+1 p R s
+2 p S .
+
+Player 1 Hand: S 
+Player 2 Hand: r 
+Current player: Player 1 (Round 5/10)
+
+Move 9
+Player 1 plays Scissors at position (2,2)
+  0 1 2
+0 r p s
+1 p R s
+2 p S S
+
+Player 1 Hand: 
+Player 2 Hand: r 
+Current player: Player 2 (Round 5/10)
+
+Move 10
+No valid moves: no valid moves
+
+Game Over!
+It's a draw!
+
+Main Menu:
+1. Play against AI
+2. Watch AI vs AI demonstration
+3. Exit
+Select an option: Goodbye!

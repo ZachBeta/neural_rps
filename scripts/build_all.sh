@@ -1,6 +1,9 @@
 #!/bin/bash
 # Build and test all implementations
 
+# Ensure we're in the project root
+cd "$(dirname "$0")/.."
+
 echo "===== Building and Testing Neural RPS Implementations ====="
 
 # Build all implementations

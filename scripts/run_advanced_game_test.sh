@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 # Ensure we're in the project root
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 echo "==========================================="
 echo "Running Advanced Neural RPS Game Test"
@@ -19,7 +19,7 @@ make build
 echo "Creating test opponent strategies..."
 
 # Strategy 1: Fixed pattern (rock, paper, scissors, repeat)
-cat > strategy_fixed_pattern.txt << EOF
+cat > output/strategy_fixed_pattern.txt << EOF
 rock
 paper
 scissors
@@ -38,7 +38,7 @@ scissors
 EOF
 
 # Strategy 2: Biased toward rock (60% rock, 20% paper, 20% scissors)
-cat > strategy_biased_rock.txt << EOF
+cat > output/strategy_biased_rock.txt << EOF
 rock
 rock
 rock
@@ -57,7 +57,7 @@ scissors
 EOF
 
 # Strategy 3: Biased toward paper (20% rock, 60% paper, 20% scissors)
-cat > strategy_biased_paper.txt << EOF
+cat > output/strategy_biased_paper.txt << EOF
 rock
 paper
 paper
@@ -76,7 +76,7 @@ scissors
 EOF
 
 # Strategy 4: Biased toward scissors (20% rock, 20% paper, 60% scissors)
-cat > strategy_biased_scissors.txt << EOF
+cat > output/strategy_biased_scissors.txt << EOF
 rock
 paper
 scissors
@@ -103,7 +103,7 @@ echo "Creating standardized game results..."
 simulate_game() {
     local model_name=$1
     local strategy=$2
-    local output_file="${model_name}_${strategy}_results.txt"
+    local output_file="output/${model_name}_${strategy}_results.txt"
     
     echo "===================================================" > $output_file
     echo "Neural RPS Game Results - $model_name Implementation" >> $output_file
@@ -119,7 +119,7 @@ simulate_game() {
     
     # Set strategy file or prepare for dynamic strategy
     if [ "$strategy" != "mimicking" ]; then
-        strategy_file="strategy_${strategy}.txt"
+        strategy_file="output/strategy_${strategy}.txt"
     fi
     
     # Play the game
@@ -287,7 +287,7 @@ for model in "${models[@]}"; do
 done
 
 # Create comparative summary
-cat > advanced_game_comparison.txt << EOF
+cat > output/advanced_game_comparison.txt << EOF
 =========================================
 Advanced Neural RPS Game Comparison
 =========================================
@@ -299,7 +299,7 @@ EOF
 
 # Add results for each strategy
 for strategy in "${strategies[@]}"; do
-    cat >> advanced_game_comparison.txt << EOF
+    cat >> output/advanced_game_comparison.txt << EOF
 
 Strategy: $strategy
 -----------------
@@ -313,7 +313,7 @@ EOF
 done
 
 # Add key observations
-cat >> advanced_game_comparison.txt << EOF
+cat >> output/advanced_game_comparison.txt << EOF
 Key Observations:
 ----------------
 - All models use the optimal counter-strategy against any opponent move
@@ -333,5 +333,5 @@ echo ""
 echo "Advanced game comparison completed. Results saved to multiple files."
 echo ""
 echo "To view the summary, run:"
-echo "  cat advanced_game_comparison.txt"
+echo "  cat output/advanced_game_comparison.txt"
 echo "" 

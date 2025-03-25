@@ -13,7 +13,11 @@ import re
 
 def validate_output(filename):
     """Validate that a file follows the standardized output format."""
-    if not os.path.exists(filename):
+    # Check if file exists in output directory first, then in root
+    output_filename = os.path.join("output", filename)
+    if os.path.exists(output_filename):
+        filename = output_filename
+    elif not os.path.exists(filename):
         print(f"Error: File {filename} does not exist.")
         return False
     
@@ -65,7 +69,8 @@ def validate_all():
     
     success = True
     for filename in output_files:
-        if not validate_output(filename):
+        filepath = os.path.join("output", filename)
+        if not validate_output(filepath):
             success = False
     
     return success

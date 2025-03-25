@@ -6,28 +6,26 @@
 set -e  # Exit on any error
 
 # Ensure we're in the project root
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 echo "==========================================="
-echo "Running Neural RPS Game Comparison"
+echo "Running Standardized Neural RPS Game"
 echo "==========================================="
 
 # Make sure all implementations are built
 make build
 
-# Define a fixed sequence of opponent moves to test against all models
-# This ensures each model faces the same sequence for fair comparison
-cat > opponent_sequence.txt << EOF
+# Create a sequence of opponent moves
+cat > output/opponent_sequence.txt << EOF
 rock
 paper
 scissors
 rock
 paper
+scissors
 rock
-scissors
-scissors
 paper
-rock
+scissors
 EOF
 
 echo "Creating standardized game results..."
@@ -35,7 +33,7 @@ echo "Creating standardized game results..."
 # Function to simulate a game and calculate statistics
 simulate_game() {
     local model_name=$1
-    local output_file="${model_name}_game_results.txt"
+    local output_file="output/${model_name}_game_results.txt"
     
     echo "===================================================" > $output_file
     echo "Neural RPS Game Results - $model_name Implementation" >> $output_file
@@ -106,7 +104,7 @@ simulate_game() {
         
         # Log the move
         echo "Move $move_count: Opponent played $opponent_move, Model played $model_move → $result" >> $output_file
-    done < opponent_sequence.txt
+    done < output/opponent_sequence.txt
     
     # Calculate statistics
     local total_moves=$((wins + losses + ties))
@@ -131,7 +129,7 @@ simulate_game "go"
 simulate_game "legacy_cpp"
 
 # Create comparative summary
-cat > game_comparison_summary.txt << EOF
+cat > output/game_comparison_summary.txt << EOF
 =========================================
 Neural RPS Game Comparison Summary
 =========================================
@@ -153,12 +151,8 @@ Key Observations:
 EOF
 
 echo ""
-echo "Game comparison completed. Results saved to:"
-echo "  - cpp_game_results.txt"
-echo "  - go_game_results.txt" 
-echo "  - legacy_cpp_game_results.txt"
-echo "  - game_comparison_summary.txt"
+echo "Game simulation completed. Results saved to multiple files."
 echo ""
 echo "To view the summary, run:"
-echo "  cat game_comparison_summary.txt"
+echo "  cat output/game_comparison_summary.txt"
 echo "" 

@@ -39,11 +39,11 @@ run-demos: build
 	@echo "Running AlphaGo demo..."
 	cd alphago_demo && ./run.sh
 	@echo "---------------------------------"
-	@echo "All demos completed. Output files generated in project root:"
-	@echo "- legacy_cpp_demo_output.txt (from legacy C++ implementation)"
-	@echo "- cpp_demo_output.txt (from simplified C++ demo)"
-	@echo "- go_demo_output.txt"
-	@echo "- alphago_demo_output.txt"
+	@echo "All demos completed. Output files generated in output directory:"
+	@echo "- output/legacy_cpp_demo_output.txt (from legacy C++ implementation)"
+	@echo "- output/cpp_demo_output.txt (from simplified C++ demo)"
+	@echo "- output/go_demo_output.txt"
+	@echo "- output/alphago_demo_output.txt"
 	@echo ""
 	@echo "Note: The full C++ neural implementation can be run with:"
 	@echo "make run-cpp-full"
@@ -70,7 +70,7 @@ clean:
 	rm -rf cpp_implementation/build/
 	rm -rf legacy_cpp_implementation/build/
 	rm -f alphago_demo/tictactoe
-	rm -f cpp_demo_output.txt legacy_cpp_demo_output.txt go_demo_output.txt alphago_demo_output.txt go_neural_rps_model.gob
+	rm -f output/cpp_demo_output.txt output/legacy_cpp_demo_output.txt output/go_demo_output.txt output/alphago_demo_output.txt output/go_neural_rps_model.gob
 
 # Run the Golang program
 run-go: build-go

@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 # Ensure we're in the project root
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 echo "==========================================="
 echo "Running Neural RPS demos with standardized output format"
@@ -14,13 +14,13 @@ echo "==========================================="
 
 # Clean up previous output files
 echo "Cleaning up previous output files..."
-rm -f legacy_cpp_demo_output.txt cpp_demo_output.txt go_demo_output.txt alphago_demo_output.txt
+rm -f output/legacy_cpp_demo_output.txt output/cpp_demo_output.txt output/go_demo_output.txt output/alphago_demo_output.txt
 
 # Create standardized output files to replace the original outputs
 echo "Creating standardized output files..."
 
 # Create standardized C++ output
-cat > cpp_demo_output.txt << EOF
+cat > output/cpp_demo_output.txt << EOF
 ==================================================
 Neural Rock Paper Scissors - C++ Implementation
 ==================================================
@@ -92,7 +92,7 @@ Weight Ranges:
 EOF
 
 # Create standardized Go output
-cat > go_demo_output.txt << EOF
+cat > output/go_demo_output.txt << EOF
 ==================================================
 Neural Rock Paper Scissors - Go Implementation
 ==================================================
@@ -164,7 +164,7 @@ Weight Ranges:
 EOF
 
 # Create standardized Legacy C++ output
-cat > legacy_cpp_demo_output.txt << EOF
+cat > output/legacy_cpp_demo_output.txt << EOF
 ==================================================
 Neural Rock Paper Scissors - Legacy C++ Implementation
 ==================================================
@@ -236,7 +236,7 @@ Weight Ranges:
 EOF
 
 # Create standardized AlphaGo demo output
-cat > alphago_demo_output.txt << EOF
+cat > output/alphago_demo_output.txt << EOF
 ==================================================
 Neural Game AI - Go Implementation (AlphaGo-style)
 ==================================================
@@ -322,9 +322,9 @@ python3 validate_output_format.py
 echo ""
 echo "Demos completed. All output files follow the standardized format."
 echo "You can now compare the outputs using:"
-echo "  diff -y --suppress-common-lines cpp_demo_output.txt go_demo_output.txt | less"
-echo "  diff -y --suppress-common-lines legacy_cpp_demo_output.txt cpp_demo_output.txt | less"
+echo "  diff -y --suppress-common-lines output/cpp_demo_output.txt output/go_demo_output.txt | less"
+echo "  diff -y --suppress-common-lines output/legacy_cpp_demo_output.txt output/cpp_demo_output.txt | less"
 echo ""
 echo "Or view them side by side using:"
-echo "  paste -d '|' cpp_demo_output.txt go_demo_output.txt | less"
+echo "  paste -d '|' output/cpp_demo_output.txt output/go_demo_output.txt | less"
 echo "" 

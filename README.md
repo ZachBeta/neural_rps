@@ -28,7 +28,8 @@ This project explores different implementations of neural networks for playing R
 ├── cpp_implementation/        # Simplified C++ demonstration plus full implementation
 ├── golang_implementation/     # Go implementation with improved architecture
 ├── alphago_demo/              # AlphaGo-style Tic-Tac-Toe demo
-└── output/                    # Training output and visualizations
+├── scripts/                   # Shell scripts for running tests and demos
+├── output/                    # Training output and visualizations
 ```
 
 ## Requirements
@@ -64,10 +65,10 @@ make run-go
 make run-alphago
 ```
 
-Or use the build_all.sh script to build and run all implementations in sequence:
+Or use the scripts/build_all.sh script to build and run all implementations in sequence:
 
 ```bash
-./build_all.sh
+./scripts/build_all.sh
 ```
 
 ## Running Demos and Comparing Output
@@ -82,11 +83,11 @@ make run-demos
 This will:
 1. Build all implementations
 2. Run a demo of each implementation
-3. Generate output files in the project root directory:
-   - `legacy_cpp_demo_output.txt` - Original C++ implementation output
-   - `cpp_demo_output.txt` - Simplified C++ demo output
-   - `go_demo_output.txt` - Golang implementation output
-   - `alphago_demo_output.txt` - AlphaGo demo output
+3. Generate output files in the output directory:
+   - `output/legacy_cpp_demo_output.txt` - Original C++ implementation output
+   - `output/cpp_demo_output.txt` - Simplified C++ demo output
+   - `output/go_demo_output.txt` - Golang implementation output
+   - `output/alphago_demo_output.txt` - AlphaGo demo output
 
 These files can be compared to understand the differences in how each implementation:
 - Represents the game state

@@ -8,6 +8,9 @@ echo "This script will run demos of all implementations"
 echo "and generate output files for comparison."
 echo
 
+# Ensure we're in the project root
+cd "$(dirname "$0")/.."
+
 # Set up environment variables for C++ implementation
 export EIGEN_DIR="/opt/homebrew/include/eigen3"
 export CPLUS_INCLUDE_PATH="$EIGEN_DIR:$CPLUS_INCLUDE_PATH"
