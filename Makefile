@@ -1,7 +1,8 @@
 .PHONY: all build run test clean \
         build-legacy-cpp build-cpp build-go build-alphago \
-        run-legacy-cpp run-cpp run-go run-alphago \
-        alphago-train alphago-tournament golang-tournament \
+        run-legacy-cpp run-cpp run-go run-alphago-ttt run-alphago-rps run-alphago-interactive \
+        test-go test-alphago \
+        alphago-train alphago-quick-train alphago-tournament golang-tournament golang-vs-alphago \
         doc fmt install-deps
 
 # Main targets
@@ -9,6 +10,7 @@ all: build
 
 # Build all implementations
 build: build-legacy-cpp build-cpp build-go build-alphago
+	@echo "All implementations built successfully"
 
 # Build individual implementations
 build-legacy-cpp:
@@ -17,16 +19,15 @@ build-legacy-cpp:
 
 build-cpp:
 	@echo "Building C++ implementation..."
-	cd cpp_implementation && mkdir -p build && cd build && cmake .. && make
+	cd cpp_implementation && make all
 
 build-go:
 	@echo "Building Golang implementation..."
-	cd golang_implementation && go build -o bin/neural_rps cmd/neural_rps/main.go
+	cd golang_implementation && make build
 
 build-alphago:
 	@echo "Building AlphaGo demos..."
-	cd alphago_demo && go build -o bin/tictactoe cmd/tictactoe/main.go
-	cd alphago_demo && go build -o bin/rps_card cmd/rps_card/main.go
+	cd alphago_demo && make build
 
 # Run individual implementations
 run-legacy-cpp: build-legacy-cpp
@@ -35,59 +36,70 @@ run-legacy-cpp: build-legacy-cpp
 
 run-cpp: build-cpp
 	@echo "Running C++ simplified demo..."
-	./cpp_implementation/build/neural_rps_demo
+	cd cpp_implementation && make run-demo
 
 run-go: build-go
 	@echo "Running Golang implementation..."
-	./golang_implementation/bin/neural_rps
+	cd golang_implementation && make run
 
 run-alphago-ttt: build-alphago
 	@echo "Running AlphaGo Tic-Tac-Toe demo..."
-	./alphago_demo/bin/tictactoe
+	cd alphago_demo && ./bin/tictactoe
 
 run-alphago-rps: build-alphago
 	@echo "Running AlphaGo RPS Card Game demo..."
-	./alphago_demo/bin/rps_card
+	cd alphago_demo && make play
+
+run-alphago-interactive: build-alphago
+	@echo "Running interactive game against AlphaGo agent..."
+	cd alphago_demo && make play-interactive
 
 # Testing
-test:
-	@echo "Running all tests..."
-	cd golang_implementation && go test -v ./...
-	cd alphago_demo && go test -v ./...
+test: test-go test-alphago
+	@echo "All tests passed"
+
+test-go:
+	@echo "Running Golang tests..."
+	cd golang_implementation && make test
+
+test-alphago:
+	@echo "Running AlphaGo tests..."
+	cd alphago_demo && make test
 
 # AlphaGo specific targets
-alphago-train:
+alphago-train: build-alphago
 	@echo "Training AlphaGo models..."
-	cd alphago_demo && go build -o bin/train_models ./cmd/train_models
-	cd alphago_demo && ./bin/train_models
+	cd alphago_demo && make train
 	@echo "Training complete, models saved to alphago_demo/output/"
 
-alphago-tournament:
+alphago-quick-train: build-alphago
+	@echo "Quick training AlphaGo models (reduced parameters)..."
+	cd alphago_demo && make quick-train
+	@echo "Training complete, models saved to alphago_demo/output/"
+
+alphago-tournament: build-alphago
 	@echo "Running AlphaGo tournament..."
-	cd alphago_demo && go build -o bin/compare_models ./cmd/compare_models
-	cd alphago_demo && ./bin/compare_models --games 50
+	cd alphago_demo && make compare
 	@echo "Tournament complete, results in alphago_demo/output/"
 
 # Golang implementation specific targets
-golang-tournament:
+golang-tournament: build-go
 	@echo "Running Golang implementation tournament..."
 	cd golang_implementation && make tournament-verbose
 	@echo "Tournament complete, results in golang_implementation/results/"
 
-golang-vs-alphago:
-	@echo "Running tournament between Golang PPO and AlphaGo agents..."
+golang-vs-alphago: build-go
+	@echo "Running tournament between Golang and AlphaGo agents..."
 	cd golang_implementation && make alphago-vs-alphago-verbose
 	@echo "Tournament complete, results in golang_implementation/results/"
 
 # Clean build artifacts
 clean:
-	@echo "Cleaning build artifacts..."
-	rm -rf golang_implementation/bin/
-	rm -rf golang_implementation/coverage.out golang_implementation/coverage.html
-	rm -rf cpp_implementation/build/
+	@echo "Cleaning all build artifacts..."
+	cd golang_implementation && make clean
+	cd alphago_demo && make clean
+	cd cpp_implementation && make clean
 	rm -rf legacy_cpp_implementation/build/
-	rm -rf alphago_demo/bin/
-	rm -f alphago_demo/tictactoe alphago_demo/rps_card
 
 # Install dependencies
 install-deps:
@@ -99,12 +111,13 @@ install-deps:
 # Format code
 fmt:
 	@echo "Formatting Golang code..."
-	cd golang_implementation && go fmt ./...
+	cd golang_implementation && make fmt
 	cd alphago_demo && go fmt ./...
 
 # Generate documentation
 doc:
 	@echo "Generating documentation..."
+	mkdir -p docs
 	@echo "For golang_implementation: http://localhost:6060/pkg/github.com/zachbeta/neural_rps/golang_implementation/"
 	@echo "For alphago_demo: http://localhost:6061/pkg/github.com/zachbeta/neural_rps/alphago_demo/"
 	cd golang_implementation && godoc -http=:6060 &

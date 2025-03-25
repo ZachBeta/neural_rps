@@ -37,32 +37,32 @@ doc:
 
 # Tournament target
 tournament:
-	@mkdir -p bin
+	@mkdir -p bin results
 	@go build -o bin/tournament cmd/tournament/main.go
 	@echo "Running tournament between AlphaGo and PPO agents..."
-	@./bin/tournament --games 50 --alphago-sims 300 --ppo-hidden 128
-	@echo "Tournament complete!"
+	@./bin/tournament --games 50 --alphago-sims 300 --ppo-hidden 128 > results/tournament_results.txt
+	@echo "Tournament complete! Results saved to results/tournament_results.txt"
 
 # Tournament verbose
 tournament-verbose:
-	@mkdir -p bin
+	@mkdir -p bin results
 	@go build -o bin/tournament cmd/tournament/main.go
 	@echo "Running tournament (verbose mode)..."
-	@./bin/tournament --games 10 --alphago-sims 300 --ppo-hidden 128 --verbose
-	@echo "Tournament complete!"
+	@./bin/tournament --games 10 --alphago-sims 300 --ppo-hidden 128 --verbose > results/tournament_verbose_results.txt
+	@echo "Tournament complete! Results saved to results/tournament_verbose_results.txt"
 
 # AlphaGo vs AlphaGo tournament
 alphago-vs-alphago:
-	@mkdir -p bin
+	@mkdir -p bin results
 	@go build -o bin/alphago_vs_alphago cmd/alphago_vs_alphago/main.go
 	@echo "Running tournament between small and large AlphaGo agents..."
-	@./bin/alphago_vs_alphago --games 50 --small-sims 100 --large-sims 300 --small-exploration 1.0 --large-exploration 1.5
-	@echo "Tournament complete!"
+	@./bin/alphago_vs_alphago --games 50 --small-sims 100 --large-sims 300 --small-exploration 1.0 --large-exploration 1.5 > results/alphago_vs_alphago_results.txt
+	@echo "Tournament complete! Results saved to results/alphago_vs_alphago_results.txt"
 
 # AlphaGo vs AlphaGo tournament (verbose)
 alphago-vs-alphago-verbose:
-	@mkdir -p bin
+	@mkdir -p bin results
 	@go build -o bin/alphago_vs_alphago cmd/alphago_vs_alphago/main.go
 	@echo "Running tournament between small and large AlphaGo agents (verbose mode)..."
-	@./bin/alphago_vs_alphago --games 10 --small-sims 100 --large-sims 300 --small-exploration 1.0 --large-exploration 1.5 --verbose
-	@echo "Tournament complete!" 
+	@./bin/alphago_vs_alphago --games 10 --small-sims 100 --large-sims 300 --small-exploration 1.0 --large-exploration 1.5 --verbose > results/alphago_vs_alphago_verbose_results.txt
+	@echo "Tournament complete! Results saved to results/alphago_vs_alphago_verbose_results.txt" 
