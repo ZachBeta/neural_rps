@@ -6,6 +6,8 @@ A neural network-based implementation of Rock Paper Scissors using Proximal Poli
 
 This project implements a neural network agent that learns to play Rock Paper Scissors using reinforcement learning. The agent uses a Proximal Policy Optimization (PPO) algorithm to learn optimal strategies against a random opponent.
 
+Additionally, the project includes an AlphaGo-style implementation for Tic-Tac-Toe that demonstrates the core principles of the AlphaGo algorithm in a simpler environment.
+
 ## Features
 
 - Neural network implementation with one hidden layer
@@ -13,19 +15,21 @@ This project implements a neural network agent that learns to play Rock Paper Sc
 - Game environment with state tracking
 - Visualization of network architecture, weights, and training progress
 - Demonstration games after training
+- AlphaGo-style demo with Monte Carlo Tree Search and neural networks for Tic-Tac-Toe
 
 ## Project Structure
 
 ```
 .
+├── alphago_demo/        # AlphaGo-style Tic-Tac-Toe implementation
 ├── cmd/
-│   └── neural_rps/        # Main program
+│   └── neural_rps/     # Main program
 ├── pkg/
-│   ├── agent/            # PPO agent implementation
-│   ├── game/             # Game environment
-│   ├── neural/           # Neural network implementation
-│   └── visualizer/       # Visualization utilities
-└── output/               # Training output and visualizations
+│   ├── agent/          # PPO agent implementation
+│   ├── game/           # Game environment
+│   ├── neural/         # Neural network implementation
+│   └── visualizer/     # Visualization utilities
+└── output/             # Training output and visualizations
 ```
 
 ## Requirements
@@ -58,6 +62,12 @@ The program will:
 2. Train the agent for 1000 episodes
 3. Visualize the training progress
 4. Play 3 demonstration games
+
+Run the AlphaGo-style Tic-Tac-Toe demo:
+```bash
+cd alphago_demo
+./run.sh
+```
 
 ## Training Process
 
@@ -140,7 +150,28 @@ visualizer.VisualizeWeights(nn, inputLabels, hiddenLabels, outputLabels)
 visualizer.VisualizePrediction(nn, input, output, inputLabels, outputLabels)
 ```
 
-### Example
+## AlphaGo-Style Implementation
+
+The `alphago_demo` directory contains a complete implementation of an AlphaGo-style learning system for the game of Tic-Tac-Toe.
+
+### Features
+
+- **Neural Networks**: Policy network for move probabilities and value network for position evaluation
+- **Monte Carlo Tree Search**: Tree search algorithm guided by neural networks
+- **Self-Play Training**: System that learns by playing against itself
+- **Interactive Play**: Play against the trained AI
+
+### Components
+
+- Game logic and board representation
+- Neural network implementation with backpropagation
+- MCTS algorithm with UCB-based exploration
+- Self-play training system
+- Demo interface
+
+For more detailed information, see the [alphago_demo/IMPLEMENTATION.md](alphago_demo/IMPLEMENTATION.md) file.
+
+## Example
 
 See `cmd/neural_rps/main.go` for a complete example of training a neural network to play Rock, Paper, Scissors.
 

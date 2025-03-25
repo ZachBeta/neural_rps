@@ -9,6 +9,8 @@ The system combines:
 - Monte Carlo Tree Search (MCTS)
 - Self-play for training
 
+For a detailed explanation of the implementation, see [IMPLEMENTATION.md](IMPLEMENTATION.md).
+
 ## Architecture
 
 The project is organized into the following packages:
@@ -43,14 +45,19 @@ The system trains by playing against itself, using the results to improve the ne
 Build and run the TicTacToe demo:
 
 ```bash
-cd alphago_demo
+./run.sh
+```
+
+Or build it manually:
+
+```bash
 go build -o tictactoe cmd/tictactoe/main.go
 ./tictactoe
 ```
 
 ## Playing Against the AI
 
-The demo allows you to play Tic-Tac-Toe against the trained AI. You'll input moves as row,column coordinates (0-2,0-2).
+The demo runs in a simulated mode with predefined moves, but you can modify the code to play interactively. The interactive mode allows you to play Tic-Tac-Toe against the trained AI by inputting moves as row,column coordinates (0-2,0-2).
 
 ## Technical Notes
 
