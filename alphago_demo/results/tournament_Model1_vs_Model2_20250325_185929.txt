@@ -1,0 +1,5 @@
+Tournament: Model1 vs Model2
+Games: 50
+Model1 wins: 15 (30.0%)
+Model2 wins: 35 (70.0%)
+Draws: 0 (0.0%)

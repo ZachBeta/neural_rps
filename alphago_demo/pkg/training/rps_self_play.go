@@ -3,6 +3,9 @@ package training
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
+	"sync"
+	"time"
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/mcts"
@@ -18,21 +21,23 @@ type RPSTrainingExample struct {
 
 // RPSSelfPlayParams contains parameters for self-play
 type RPSSelfPlayParams struct {
-	NumGames   int
-	DeckSize   int
-	HandSize   int
-	MaxRounds  int
-	MCTSParams mcts.RPSMCTSParams
+	NumGames      int
+	DeckSize      int
+	HandSize      int
+	MaxRounds     int
+	MCTSParams    mcts.RPSMCTSParams
+	ForceParallel bool // Force parallel execution regardless of game count
 }
 
 // DefaultRPSSelfPlayParams returns default self-play parameters
 func DefaultRPSSelfPlayParams() RPSSelfPlayParams {
 	return RPSSelfPlayParams{
-		NumGames:   100,
-		DeckSize:   21, // 7 of each card type
-		HandSize:   5,
-		MaxRounds:  10,
-		MCTSParams: mcts.DefaultRPSMCTSParams(),
+		NumGames:      100,
+		DeckSize:      21, // 7 of each card type
+		HandSize:      5,
+		MaxRounds:     10,
+		MCTSParams:    mcts.DefaultRPSMCTSParams(),
+		ForceParallel: false,
 	}
 }
 
@@ -58,44 +63,201 @@ func NewRPSSelfPlay(policyNetwork *neural.RPSPolicyNetwork, valueNetwork *neural
 func (sp *RPSSelfPlay) GenerateGames(verbose bool) []RPSTrainingExample {
 	sp.examples = make([]RPSTrainingExample, 0)
 
-	// Calculate update frequency based on number of games
-	// For small number of games (< 100), show updates every 10 games
-	// For large number of games, show updates every 1% of progress
-	updateFrequency := 10
-	if sp.params.NumGames >= 100 {
-		// At least every 1% of games, but maximum every 10 games for very large values
-		onePercent := sp.params.NumGames / 100
-		if onePercent < 10 {
-			updateFrequency = onePercent
-			if updateFrequency < 1 {
-				updateFrequency = 1
-			}
-		}
+	// Use serial or parallel generation based on game count and available cores
+	if (sp.params.NumGames < 5 || runtime.NumCPU() <= 2) && !sp.params.ForceParallel {
+		// Use original serial implementation for small jobs or limited cores
+		return sp.generateGamesSerial(verbose)
+	} else {
+		// Use parallel implementation for larger jobs with multiple cores
+		// or when explicitly requested with ForceParallel
+		return sp.generateGamesParallel(verbose)
 	}
+}
+
+// generateGamesSerial generates games serially (original implementation)
+func (sp *RPSSelfPlay) generateGamesSerial(verbose bool) []RPSTrainingExample {
+	startTime := time.Now()
+	totalExamples := 0
 
 	for i := 0; i < sp.params.NumGames; i++ {
-		// Show progress more frequently
-		if verbose && (i%updateFrequency == 0 || i == sp.params.NumGames-1) {
-			fmt.Printf("Playing game %d/%d (%.1f%%)\n",
-				i+1, sp.params.NumGames, float64(i+1)/float64(sp.params.NumGames)*100)
+		if verbose || (i+1)%10 == 0 || i == 0 {
+			fmt.Printf("Playing game %d/%d (%.1f%%)\n", i+1, sp.params.NumGames,
+				float64(i+1)/float64(sp.params.NumGames)*100)
 		}
 
 		gameExamples := sp.playGame(verbose && i == 0)
 		sp.examples = append(sp.examples, gameExamples...)
+		totalExamples += len(gameExamples)
+
+		// Report progress for long runs
+		if (i+1)%20 == 0 && i+1 < sp.params.NumGames {
+			elapsed := time.Since(startTime)
+			gamesPerSecond := float64(i+1) / elapsed.Seconds()
+			estimatedTotal := time.Duration(float64(sp.params.NumGames) / gamesPerSecond * float64(time.Second))
+			estimatedRemaining := estimatedTotal - elapsed
+
+			fmt.Printf("  Progress: %d/%d games, %.2f games/sec, ~%s remaining\n",
+				i+1, sp.params.NumGames, gamesPerSecond, estimatedRemaining.Round(time.Second))
+		}
+	}
+
+	// Calculate statistics
+	elapsed := time.Since(startTime)
+	examplesPerGame := float64(totalExamples) / float64(sp.params.NumGames)
+	gamesPerSecond := float64(sp.params.NumGames) / elapsed.Seconds()
+
+	if verbose {
+		fmt.Printf("Generated %d training examples in %s (%.1f examples/game, %.2f games/sec)\n",
+			totalExamples, elapsed, examplesPerGame, gamesPerSecond)
 	}
 
 	return sp.examples
 }
 
-// playGame plays a single game and returns training examples
-func (sp *RPSSelfPlay) playGame(verbose bool) []RPSTrainingExample {
+// generateGamesParallel generates games in parallel using multiple goroutines
+func (sp *RPSSelfPlay) generateGamesParallel(verbose bool) []RPSTrainingExample {
+	startTime := time.Now()
+
+	// Determine number of workers based on CPU count
+	// Use N-1 workers to avoid saturating the system
+	numWorkers := runtime.NumCPU() - 1
+	if numWorkers < 1 {
+		numWorkers = 1
+	}
+
+	// Create a buffered channel for game examples
+	gamesChan := make(chan []RPSTrainingExample, sp.params.NumGames)
+
+	// For progress tracking
+	progressChan := make(chan int, sp.params.NumGames)
+
+	var wg sync.WaitGroup
+
+	// Start a goroutine to track and report progress
+	if verbose {
+		go func() {
+			completed := 0
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case _, ok := <-progressChan:
+					if !ok {
+						return // Channel closed, exit goroutine
+					}
+					completed++
+
+					// Report every 10% or when requested
+					if completed%10 == 0 || completed == sp.params.NumGames {
+						elapsed := time.Since(startTime)
+						gamesPerSecond := float64(completed) / elapsed.Seconds()
+						estimatedTotal := time.Duration(float64(sp.params.NumGames) / gamesPerSecond * float64(time.Second))
+						estimatedRemaining := estimatedTotal - elapsed
+
+						fmt.Printf("  Progress: %d/%d games (%.1f%%), %.2f games/sec, ~%s remaining\n",
+							completed, sp.params.NumGames,
+							float64(completed)/float64(sp.params.NumGames)*100,
+							gamesPerSecond, estimatedRemaining.Round(time.Second))
+					}
+
+				case <-ticker.C:
+					// Regular progress update every 5 seconds
+					if completed > 0 && completed < sp.params.NumGames {
+						elapsed := time.Since(startTime)
+						gamesPerSecond := float64(completed) / elapsed.Seconds()
+						estimatedTotal := time.Duration(float64(sp.params.NumGames) / gamesPerSecond * float64(time.Second))
+						estimatedRemaining := estimatedTotal - elapsed
+
+						fmt.Printf("  Progress: %d/%d games (%.1f%%), %.2f games/sec, ~%s remaining\n",
+							completed, sp.params.NumGames,
+							float64(completed)/float64(sp.params.NumGames)*100,
+							gamesPerSecond, estimatedRemaining.Round(time.Second))
+					}
+				}
+			}
+		}()
+	}
+
+	fmt.Printf("Starting parallel self-play with %d workers for %d games...\n",
+		numWorkers, sp.params.NumGames)
+
+	// Create and start worker goroutines
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+
+			// Calculate games per worker
+			gamesPerWorker := sp.params.NumGames / numWorkers
+			startGame := workerID * gamesPerWorker
+			endGame := startGame + gamesPerWorker
+
+			// Last worker takes any remainder
+			if workerID == numWorkers-1 {
+				endGame = sp.params.NumGames
+			}
+
+			// Each worker needs its own copy of networks
+			localPolicyNet := sp.policyNetwork.Clone()
+			localValueNet := sp.valueNetwork.Clone()
+
+			// Each worker generates its assigned games
+			for j := startGame; j < endGame; j++ {
+				examples := sp.playGameWithNetworks(localPolicyNet, localValueNet, verbose && j == 0)
+				gamesChan <- examples
+				if verbose {
+					progressChan <- 1
+				}
+			}
+		}(i)
+	}
+
+	// Close channels once all workers are done
+	go func() {
+		wg.Wait()
+		close(gamesChan)
+		if verbose {
+			close(progressChan)
+		}
+	}()
+
+	// Collect all game examples
+	allExamples := make([]RPSTrainingExample, 0)
+	totalExamples := 0
+
+	for examples := range gamesChan {
+		allExamples = append(allExamples, examples...)
+		totalExamples += len(examples)
+	}
+
+	// Calculate and report statistics
+	elapsed := time.Since(startTime)
+	examplesPerGame := float64(totalExamples) / float64(sp.params.NumGames)
+	gamesPerSecond := float64(sp.params.NumGames) / elapsed.Seconds()
+
+	fmt.Printf("Generated %d training examples in %s (%.1f examples/game, %.2f games/sec)\n",
+		totalExamples, elapsed, examplesPerGame, gamesPerSecond)
+
+	sp.examples = allExamples
+	return allExamples
+}
+
+// playGameWithNetworks plays a single game using the provided networks
+// This allows worker goroutines to use their own network copies
+func (sp *RPSSelfPlay) playGameWithNetworks(
+	policyNetwork *neural.RPSPolicyNetwork,
+	valueNetwork *neural.RPSValueNetwork,
+	verbose bool) []RPSTrainingExample {
+
 	gameInstance := game.NewRPSGame(sp.params.DeckSize, sp.params.HandSize, sp.params.MaxRounds)
 	moveHistory := make([]game.RPSMove, 0)
 	stateHistory := make([]*game.RPSGame, 0)
 	policyHistory := make([][]float64, 0)
 
-	// Create MCTS instance
-	mctsEngine := mcts.NewRPSMCTS(sp.policyNetwork, sp.valueNetwork, sp.params.MCTSParams)
+	// Create MCTS instance with the worker's network copies
+	mctsParams := sp.params.MCTSParams
+	mctsEngine := mcts.NewRPSMCTS(policyNetwork, valueNetwork, mctsParams)
 
 	// Play until game is over
 	for !gameInstance.IsGameOver() {
@@ -171,6 +333,11 @@ func (sp *RPSSelfPlay) playGame(verbose bool) []RPSTrainingExample {
 	}
 
 	return examples
+}
+
+// Original playGame implementation remains unchanged
+func (sp *RPSSelfPlay) playGame(verbose bool) []RPSTrainingExample {
+	return sp.playGameWithNetworks(sp.policyNetwork, sp.valueNetwork, verbose)
 }
 
 // extractPolicy extracts a policy distribution from MCTS visit counts

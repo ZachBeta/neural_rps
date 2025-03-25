@@ -39,6 +39,7 @@ const (
 func main() {
 	// Parse command line flags
 	smallRun := flag.Bool("small-run", false, "Run with reduced parameters for quick testing")
+	parallel := flag.Bool("parallel", false, "Use parallel execution for training")
 	flag.Parse()
 
 	// Adjust parameters for small test runs
@@ -57,6 +58,10 @@ func main() {
 		tGames = 50  // More tournament games to get better statistical significance
 	}
 
+	if *parallel {
+		fmt.Println("Using parallel execution for faster training")
+	}
+
 	// Seed random number generator
 	rand.Seed(time.Now().UnixNano())
 
@@ -66,12 +71,12 @@ func main() {
 	// Initialize neural networks for model 1 (smaller network, fewer games)
 	fmt.Println("=== Training Model 1 (Small Network) ===")
 	policy1, value1 := trainModel("output/rps_policy1.model", "output/rps_value1.model",
-		m1Games, m1Epochs, model1HiddenSize)
+		m1Games, m1Epochs, model1HiddenSize, *parallel)
 
 	// Initialize neural networks for model 2 (larger network, more games)
 	fmt.Println("\n=== Training Model 2 (Large Network) ===")
 	policy2, value2 := trainModel("output/rps_policy2.model", "output/rps_value2.model",
-		m2Games, m2Epochs, model2HiddenSize)
+		m2Games, m2Epochs, model2HiddenSize, *parallel)
 
 	// Create agents for tournament with different MCTS parameters
 	// Give the smaller model more simulations to compensate for less training
@@ -167,7 +172,7 @@ func calculatePValue(wins1, wins2, total int) float64 {
 }
 
 // trainModel trains a policy and value network with self-play
-func trainModel(policyPath, valuePath string, selfPlayGames, epochs, hiddenSize int) (*neural.RPSPolicyNetwork, *neural.RPSValueNetwork) {
+func trainModel(policyPath, valuePath string, selfPlayGames, epochs, hiddenSize int, forceParallel bool) (*neural.RPSPolicyNetwork, *neural.RPSValueNetwork) {
 	// Initialize neural networks with specified hidden size
 	policyNetwork := neural.NewRPSPolicyNetwork(hiddenSize)
 	valueNetwork := neural.NewRPSValueNetwork(hiddenSize)
@@ -183,6 +188,17 @@ func trainModel(policyPath, valuePath string, selfPlayGames, epochs, hiddenSize 
 	selfPlayParams.DeckSize = deckSize
 	selfPlayParams.HandSize = handSize
 	selfPlayParams.MaxRounds = maxRounds
+
+	// Force parallel execution if requested
+	if forceParallel {
+		// Set a minimum game count to ensure parallel execution
+		if selfPlayParams.NumGames < 5 {
+			fmt.Println("Warning: Game count too low for effective parallelization, increasing to 5")
+			selfPlayParams.NumGames = 5
+		}
+		selfPlayParams.ForceParallel = true
+		fmt.Println("Forced parallel execution enabled")
+	}
 
 	// Print MCTS simulation parameters
 	fmt.Printf("MCTS Parameters: %d simulations per move\n", selfPlayParams.MCTSParams.NumSimulations)

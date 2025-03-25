@@ -1,5 +1,6 @@
 # TODO
 * tracking progress
+we might need to timestamp the models rather than rps_policy1.model and rps_value1.model
 
 ## in progress
 

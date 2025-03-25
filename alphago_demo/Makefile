@@ -1,4 +1,5 @@
-.PHONY: build test train compare play play-interactive quick-train clean
+.PHONY: build test train compare play play-interactive quick-train clean \
+	train-parallel tournament-elo profile-train
 
 # Build all AlphaGo binaries
 build:
@@ -24,6 +25,13 @@ train: build
 	@./bin/train_models
 	@echo "Models saved to output/ directory"
 
+# Train AlphaGo models using optimized parallel implementation
+train-parallel: build
+	@echo "Training AlphaGo models with parallel optimization..."
+	@mkdir -p output
+	@./bin/train_models --parallel
+	@echo "Models saved to output/ directory"
+
 # Train AlphaGo models with reduced parameters (for testing)
 quick-train: build
 	@echo "Quick training AlphaGo models (reduced parameters)..."
@@ -31,11 +39,37 @@ quick-train: build
 	@./bin/train_models --small-run
 	@echo "Models saved to output/ directory"
 
+# Train AlphaGo models with parallel optimization (in small-run mode)
+quick-train-parallel: build
+	@echo "Quick training AlphaGo models (reduced parameters, parallel)..."
+	@mkdir -p output
+	@./bin/train_models --small-run --parallel
+	@echo "Models saved to output/ directory"
+
 # Compare AlphaGo models
 compare: build
 	@echo "Comparing AlphaGo models..."
 	@./bin/compare_models --games 50
 	@echo "Comparison results saved to output/ directory"
+
+# Run a tournament with ELO tracking
+tournament-elo: build
+	@echo "Running tournament with ELO tracking..."
+	@./bin/compare_models --games 100 --tournament-mode --elo
+	@echo "Tournament results and ELO ratings saved to output/elo_ratings/"
+
+# Optimize thread count for your hardware
+optimize-threads: build
+	@echo "Finding optimal thread count for your hardware..."
+	@./bin/train_models --optimize-threads
+	@echo "Optimization complete, results in output/thread_optimization.txt"
+
+# Run training with CPU profiling
+profile-train: build
+	@echo "Running training with CPU profiling..."
+	@mkdir -p output/profiles
+	@./bin/train_models --profile --small-run
+	@echo "Profile saved to output/profiles/"
 
 # Play against an AlphaGo agent
 play: build
