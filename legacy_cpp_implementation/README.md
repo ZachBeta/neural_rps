@@ -18,11 +18,17 @@ The neural network learns to play Rock Paper Scissors optimally through reinforc
 1. The agent starts with random behavior
 2. Through self-play, it collects experience (state, action, reward)
 3. It uses PPO to update its policy, gradually learning the optimal strategy:
-   - Warrior (Rock) beats Archer (Scissors)
-   - Mage (Paper) beats Warrior (Rock)
-   - Archer (Scissors) beats Mage (Paper)
+   - Rock beats Scissors
+   - Paper beats Rock
+   - Scissors beats Paper
 
-After training (~1000 episodes), the neural network learns the optimal counter-strategy against each move, achieving consistently high rewards.
+After training (~500 episodes), the neural network learns the optimal counter-strategy against each move, achieving consistently high rewards.
+
+## Neural Network Architecture
+
+- **Input Layer**: 6 neurons (one-hot encoding of previous moves)
+- **Hidden Layer**: 8 neurons with Sigmoid activation
+- **Output Layer**: 3 neurons with softmax activation (rock, paper, scissors probabilities)
 
 ## Implementation Details
 
@@ -55,6 +61,17 @@ make
 ctest
 ```
 
+## Standardized Output
+
+This implementation generates standardized output following the format specified in [shared_output_format.md](../shared_output_format.md). The standardized output includes:
+
+- Network architecture details
+- Training process metrics 
+- Model predictions for each opponent move
+- Summary of model parameters
+
+The output is written to `legacy_cpp_demo_output.txt`.
+
 ## Training Process
 
 When you run the application, you'll see:
@@ -63,6 +80,15 @@ When you run the application, you'll see:
 3. By the end of training, the network will have learned the optimal strategy
 4. Demo games that show the network's learned behavior
 
+## Performance Comparison
+
+Compared to other implementations in this repository:
+- More modular code structure than the modern C++ implementation
+- Slightly slower training time than the modern Go and C++ implementations
+- Same prediction accuracy as other implementations
+
+For a detailed comparison with other implementations, see [rps_model_comparison_report.md](../rps_model_comparison_report.md).
+
 ## Dependencies
 
 - C++17 compiler
@@ -70,6 +96,6 @@ When you run the application, you'll see:
 - Eigen3 (for matrix operations)
 - GoogleTest (optional, for tests)
 
-## Original Structure
+## Historical Note
 
 This implementation preserves the original structure and functionality of the Neural RPS project before it was split into multiple implementations. The clean separation between headers and implementation makes this version particularly well-suited for educational purposes and further development. 

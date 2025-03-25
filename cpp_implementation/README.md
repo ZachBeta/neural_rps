@@ -67,6 +67,26 @@ make run-cpp
 make run-cpp-full
 ```
 
+## Neural Network Architecture
+
+### Full Implementation
+- **Input Layer**: 9 neurons (one-hot encoding of previous moves)
+- **Hidden Layer**: 12 neurons with ReLU activation
+- **Output Layer**: 3 neurons with softmax activation (rock, paper, scissors probabilities)
+
+The network learns to counter each opponent move optimally through reinforcement learning.
+
+## Standardized Output
+
+Both implementations generate standardized output following the format specified in [shared_output_format.md](../shared_output_format.md), making it easy to compare with other implementations:
+
+- Network architecture details
+- Training process metrics (episodes, rewards, time)
+- Model predictions for each input type
+- Summary of model parameters
+
+The standardized output is written to `cpp_demo_output.txt`.
+
 ## Implementation Approach
 
 The simplified demo creates a text output explaining how the neural network would work. The full implementation actually trains a neural network using reinforcement learning with the following components:
@@ -75,6 +95,15 @@ The simplified demo creates a text output explaining how the neural network woul
 - A neural network that learns from experience
 - A PPO agent that optimizes the neural network's policy
 - Visualization of training progress and game state
+
+## Performance Comparison
+
+Compared to other implementations in this repository:
+- Faster training than the legacy C++ implementation
+- More memory efficient than the legacy implementation
+- Slightly slower than the Go implementation
+
+For a detailed comparison with other implementations, see [rps_model_comparison_report.md](../rps_model_comparison_report.md).
 
 ## Implementation Note
 
