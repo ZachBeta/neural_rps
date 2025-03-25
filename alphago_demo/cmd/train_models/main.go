@@ -78,14 +78,21 @@ func main() {
 	policy2, value2 := trainModel("output/rps_policy2.model", "output/rps_value2.model",
 		m2Games, m2Epochs, model2HiddenSize, *parallel)
 
+	// Extract model names from saved paths for agent naming
+	model1Name := fmt.Sprintf("H%d-G%d-E%d-S%d-X%.1f",
+		model1HiddenSize, m1Games, m1Epochs, mctsSimulations*3/2, 1.5)
+
+	model2Name := fmt.Sprintf("H%d-G%d-E%d-S%d-X%.1f",
+		model2HiddenSize, m2Games, m2Epochs, mctsSimulations, 1.0)
+
 	// Create agents for tournament with different MCTS parameters
 	// Give the smaller model more simulations to compensate for less training
 	// Model 1: More search but less neural network knowledge (more exploration)
 	// Model 2: Less search but more neural network knowledge (more exploitation)
-	agent1 := NewCustomAlphaGoAgent("Model1-Small", policy1, value1,
+	agent1 := NewCustomAlphaGoAgent(model1Name, policy1, value1,
 		mctsSimulations*3/2, 1.5) // 50% more simulations, higher exploration
 
-	agent2 := NewCustomAlphaGoAgent("Model2-Large", policy2, value2,
+	agent2 := NewCustomAlphaGoAgent(model2Name, policy2, value2,
 		mctsSimulations, 1.0) // Standard parameters
 
 	// Display model comparison information
@@ -129,8 +136,8 @@ func main() {
 	// Print results
 	fmt.Println("\n=== Tournament Results ===")
 	fmt.Printf("Games played: %d\n", tGames)
-	fmt.Printf("Model 1 (Small) wins: %d (%.1f%%)\n", model1Wins, float64(model1Wins)/float64(tGames)*100)
-	fmt.Printf("Model 2 (Large) wins: %d (%.1f%%)\n", model2Wins, float64(model2Wins)/float64(tGames)*100)
+	fmt.Printf("Model 1 (%s) wins: %d (%.1f%%)\n", agent1.Name(), model1Wins, float64(model1Wins)/float64(tGames)*100)
+	fmt.Printf("Model 2 (%s) wins: %d (%.1f%%)\n", agent2.Name(), model2Wins, float64(model2Wins)/float64(tGames)*100)
 	fmt.Printf("Draws: %d (%.1f%%)\n", draws, float64(draws)/float64(tGames)*100)
 
 	// Calculate statistical significance
@@ -145,11 +152,14 @@ func main() {
 		fmt.Println("(not statistically significant)")
 	}
 
+	model1Desc := "Small network with more search"
+	model2Desc := "Large network with less search"
+
 	if model2Wins > model1Wins {
-		fmt.Println("\nModel 2 (Large) outperformed Model 1!")
+		fmt.Printf("\nModel 2 (%s) outperformed Model 1!\n", model2Desc)
 		fmt.Println("Neural network quality appears more important than search quantity.")
 	} else if model1Wins > model2Wins {
-		fmt.Println("\nModel 1 (Small) outperformed Model 2!")
+		fmt.Printf("\nModel 1 (%s) outperformed Model 2!\n", model1Desc)
 		fmt.Println("Search quantity appears more important than neural network quality.")
 	} else {
 		fmt.Println("\nThe models performed equally!")
@@ -173,6 +183,14 @@ func calculatePValue(wins1, wins2, total int) float64 {
 
 // trainModel trains a policy and value network with self-play
 func trainModel(policyPath, valuePath string, selfPlayGames, epochs, hiddenSize int, forceParallel bool) (*neural.RPSPolicyNetwork, *neural.RPSValueNetwork) {
+	// Get timestamp for model naming
+	timestamp := time.Now().Format("20060102-150405")
+
+	// Create descriptive model names
+	modelName := fmt.Sprintf("rps_h%d_g%d_e%d_%s", hiddenSize, selfPlayGames, epochs, timestamp)
+	policyPath = fmt.Sprintf("output/%s_policy.model", modelName)
+	valuePath = fmt.Sprintf("output/%s_value.model", modelName)
+
 	// Initialize neural networks with specified hidden size
 	policyNetwork := neural.NewRPSPolicyNetwork(hiddenSize)
 	valueNetwork := neural.NewRPSValueNetwork(hiddenSize)
@@ -337,6 +355,10 @@ func runTournament(agent1, agent2 *AlphaGoAgent, numGames int) (agent1Wins, agen
 	fmt.Println("\nDetailed tournament results:")
 	fmt.Println("----------------------------")
 
+	// Get short names for display
+	agent1ShortName := "Model1"
+	agent2ShortName := "Model2"
+
 	// Track win streaks for analysis
 	currentStreak := 0
 	maxStreak := 0
@@ -467,7 +489,7 @@ func runTournament(agent1, agent2 *AlphaGoAgent, numGames int) (agent1Wins, agen
 		a1Wins := positionWins[pos][agent1.Name()]
 		a2Wins := positionWins[pos][agent2.Name()]
 		fmt.Printf("Position (%d,%d): %s: %d wins, %s: %d wins\n",
-			row, col, agent1.Name(), a1Wins, agent2.Name(), a2Wins)
+			row, col, agent1ShortName, a1Wins, agent2ShortName, a2Wins)
 	}
 
 	return agent1Wins, agent2Wins, draws
