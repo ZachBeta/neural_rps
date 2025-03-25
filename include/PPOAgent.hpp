@@ -26,6 +26,11 @@ public:
         c2_ = 0.01;     // Entropy coefficient
     }
 
+    // Get policy weights for visualization
+    const Eigen::MatrixXd& getPolicyWeights() const {
+        return policy_weights_;
+    }
+
     // Get action probabilities from policy network
     Eigen::VectorXd getPolicyProbs(const Eigen::VectorXd& state) const {
         Eigen::VectorXd logits = policy_weights_ * state + policy_bias_;

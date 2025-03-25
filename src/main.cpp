@@ -1,5 +1,6 @@
 #include "Environment.hpp"
 #include "PPOAgent.hpp"
+#include "NetworkVisualizer.hpp"
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -21,29 +22,18 @@ void printGameState(const Environment& env, const PPOAgent& agent) {
     Eigen::VectorXd state = env.getState();
     Eigen::VectorXd probs = agent.getPolicyProbs(state);
     
-    std::cout << "\nCurrent State:\n";
-    std::cout << "Last played: ";
-    if (state.segment(0, 3).sum() == 0) {
-        std::cout << "None";
-    } else {
-        for (int i = 0; i < 3; i++) {
-            if (state(i) > 0) {
-                std::cout << Card(static_cast<CardType>(i)).getName();
-            }
-        }
-    }
-    std::cout << "\n";
-    
-    std::cout << "Action probabilities:\n";
-    for (int i = 0; i < 3; i++) {
-        std::cout << Card(static_cast<CardType>(i)).getName() << ": "
-                  << std::fixed << std::setprecision(3) << probs(i) << "\n";
-    }
+    std::vector<std::string> action_labels = {"Warrior", "Mage", "Archer"};
+    NetworkVisualizer::visualizeActionProbs(probs, action_labels);
 }
 
 int main() {
     Environment env;
     PPOAgent agent(9, 3);  // 9 state dimensions, 3 actions
+    
+    // Visualize network architecture
+    std::vector<int> layer_sizes = {9, 3};  // Input layer and output layer
+    std::vector<std::string> layer_names = {"Input", "Output"};
+    NetworkVisualizer::visualizeArchitecture(layer_sizes, layer_names);
     
     const int num_episodes = 1000;
     const int episodes_per_update = 10;
@@ -52,10 +42,20 @@ int main() {
     std::vector<int> actions;
     std::vector<float> rewards;
     std::vector<float> values;
+    std::vector<float> episode_rewards;  // Track rewards for visualization
     
     float total_reward = 0.0f;
     
     std::cout << "Starting training...\n";
+    
+    // Visualize initial weights
+    std::vector<std::string> input_labels = {
+        "LastW", "LastM", "LastA",
+        "HandW", "HandM", "HandA",
+        "OppW", "OppM", "OppA"
+    };
+    std::vector<std::string> output_labels = {"Warrior", "Mage", "Archer"};
+    NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels);
     
     for (int episode = 0; episode < num_episodes; episode++) {
         env.reset();
@@ -89,6 +89,7 @@ int main() {
         }
         
         total_reward += episode_reward;
+        episode_rewards.push_back(episode_reward);
         
         // Update policy every episodes_per_update episodes
         if ((episode + 1) % episodes_per_update == 0) {
@@ -101,11 +102,22 @@ int main() {
             float avg_reward = total_reward / episodes_per_update;
             std::cout << "Episode " << episode + 1 << ", Average Reward: "
                       << std::fixed << std::setprecision(3) << avg_reward << "\n";
+            
+            // Visualize weights and training progress
+            if ((episode + 1) % 100 == 0) {
+                NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels);
+                NetworkVisualizer::visualizeTrainingProgress(episode_rewards);
+            }
+            
             total_reward = 0.0f;
         }
     }
     
     std::cout << "\nTraining completed!\n";
+    
+    // Final visualization of weights and training progress
+    NetworkVisualizer::visualizeWeights(agent.getPolicyWeights(), input_labels, output_labels);
+    NetworkVisualizer::visualizeTrainingProgress(episode_rewards);
     
     // Play a few games to demonstrate learned behavior
     std::cout << "\nPlaying demonstration games...\n";
