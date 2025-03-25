@@ -1,4 +1,4 @@
-.PHONY: build run test test-coverage clean
+.PHONY: build run test test-coverage clean tournament tournament-verbose
 
 # Build the project
 build:
@@ -33,4 +33,20 @@ fmt:
 
 # Generate documentation
 doc:
-	godoc -http=:6060 
+	godoc -http=:6060
+
+# Tournament target
+tournament:
+	@mkdir -p bin
+	@go build -o bin/tournament cmd/tournament/main.go
+	@echo "Running tournament between AlphaGo and PPO agents..."
+	@./bin/tournament --games 50 --alphago-sims 300 --ppo-hidden 128
+	@echo "Tournament complete!"
+
+# Tournament verbose
+tournament-verbose:
+	@mkdir -p bin
+	@go build -o bin/tournament cmd/tournament/main.go
+	@echo "Running tournament (verbose mode)..."
+	@./bin/tournament --games 10 --alphago-sims 300 --ppo-hidden 128 --verbose
+	@echo "Tournament complete!" 

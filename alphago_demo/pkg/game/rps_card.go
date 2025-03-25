@@ -428,3 +428,54 @@ func (g *RPSGame) String() string {
 
 	return sb.String()
 }
+
+// SetBoardOwner sets the owner of a card at the specified position
+func (g *RPSGame) SetBoardOwner(position int, playerVal int) {
+	if position < 0 || position >= len(g.Board) {
+		return
+	}
+
+	if playerVal == 0 {
+		g.Board[position].Owner = Player1
+	} else if playerVal == 1 {
+		g.Board[position].Owner = Player2
+	} else {
+		g.Board[position].Owner = NoPlayer
+	}
+}
+
+// SetPlayer1Hand sets the cards in player 1's hand
+func (g *RPSGame) SetPlayer1Hand(cardTypes []int) {
+	g.Player1Hand = make([]RPSCard, len(cardTypes))
+	for i, cardType := range cardTypes {
+		g.Player1Hand[i] = RPSCard{
+			Type:  RPSCardType(cardType),
+			Owner: NoPlayer,
+		}
+	}
+}
+
+// SetPlayer2Hand sets the cards in player 2's hand
+func (g *RPSGame) SetPlayer2Hand(cardTypes []int) {
+	g.Player2Hand = make([]RPSCard, len(cardTypes))
+	for i, cardType := range cardTypes {
+		g.Player2Hand[i] = RPSCard{
+			Type:  RPSCardType(cardType),
+			Owner: NoPlayer,
+		}
+	}
+}
+
+// SetCurrentPlayer sets the current player
+func (g *RPSGame) SetCurrentPlayer(playerVal int) {
+	if playerVal == 0 {
+		g.CurrentPlayer = Player1
+	} else {
+		g.CurrentPlayer = Player2
+	}
+}
+
+// SetRound sets the current round number
+func (g *RPSGame) SetRound(round int) {
+	g.Round = round
+}

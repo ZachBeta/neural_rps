@@ -1,0 +1,5 @@
+Tournament: AlphaGo vs PPO
+Games: 10
+AlphaGo wins: 5 (50.0%)
+PPO wins: 5 (50.0%)
+Draws: 0 (0.0%)

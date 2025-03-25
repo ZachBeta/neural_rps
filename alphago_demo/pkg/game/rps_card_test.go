@@ -402,3 +402,64 @@ func TestBoardStringRepresentation(t *testing.T) {
 			strings.Join(lines[len(lines)-1:], " "))
 	}
 }
+
+func TestRPSGameSetters(t *testing.T) {
+	game := NewRPSGame(15, 5, 10)
+
+	// Test SetBoardOwner
+	game.SetBoardOwner(0, 0) // Player1
+	if game.Board[0].Owner != Player1 {
+		t.Errorf("SetBoardOwner failed: expected Player1, got %v", game.Board[0].Owner)
+	}
+
+	game.SetBoardOwner(1, 1) // Player2
+	if game.Board[1].Owner != Player2 {
+		t.Errorf("SetBoardOwner failed: expected Player2, got %v", game.Board[1].Owner)
+	}
+
+	game.SetBoardOwner(2, 2) // NoPlayer
+	if game.Board[2].Owner != NoPlayer {
+		t.Errorf("SetBoardOwner failed: expected NoPlayer, got %v", game.Board[2].Owner)
+	}
+
+	// Test SetPlayer1Hand
+	cardTypes := []int{0, 1, 2} // Rock, Paper, Scissors
+	game.SetPlayer1Hand(cardTypes)
+
+	if len(game.Player1Hand) != 3 {
+		t.Errorf("SetPlayer1Hand failed: expected hand size 3, got %d", len(game.Player1Hand))
+	}
+
+	if game.Player1Hand[0].Type != Rock || game.Player1Hand[1].Type != Paper || game.Player1Hand[2].Type != Scissors {
+		t.Errorf("SetPlayer1Hand failed: hand cards have incorrect types")
+	}
+
+	// Test SetPlayer2Hand
+	cardTypes = []int{2, 1, 0} // Scissors, Paper, Rock
+	game.SetPlayer2Hand(cardTypes)
+
+	if len(game.Player2Hand) != 3 {
+		t.Errorf("SetPlayer2Hand failed: expected hand size 3, got %d", len(game.Player2Hand))
+	}
+
+	if game.Player2Hand[0].Type != Scissors || game.Player2Hand[1].Type != Paper || game.Player2Hand[2].Type != Rock {
+		t.Errorf("SetPlayer2Hand failed: hand cards have incorrect types")
+	}
+
+	// Test SetCurrentPlayer
+	game.SetCurrentPlayer(0)
+	if game.CurrentPlayer != Player1 {
+		t.Errorf("SetCurrentPlayer failed: expected Player1, got %v", game.CurrentPlayer)
+	}
+
+	game.SetCurrentPlayer(1)
+	if game.CurrentPlayer != Player2 {
+		t.Errorf("SetCurrentPlayer failed: expected Player2, got %v", game.CurrentPlayer)
+	}
+
+	// Test SetRound
+	game.SetRound(5)
+	if game.Round != 5 {
+		t.Errorf("SetRound failed: expected round 5, got %d", game.Round)
+	}
+}
