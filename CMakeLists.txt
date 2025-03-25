@@ -5,6 +5,15 @@ project(neural_rps VERSION 1.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable clang-tidy
+find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
+if(CLANG_TIDY_EXE)
+    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+else()
+    message(STATUS "clang-tidy not found!")
+endif()
+
 # Find required packages
 find_package(Eigen3 REQUIRED)
 find_package(GTest REQUIRED)
