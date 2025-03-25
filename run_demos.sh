@@ -4,7 +4,7 @@
 echo "============================================="
 echo "Neural RPS Implementation Demos"
 echo "============================================="
-echo "This script will run demos of all three implementations"
+echo "This script will run demos of all implementations"
 echo "and generate output files for comparison."
 echo
 
@@ -20,15 +20,32 @@ echo "EIGEN_DIR=$EIGEN_DIR"
 echo "Building all implementations..."
 make build
 
+# Legacy C++ Demo
+echo
+echo "============================================="
+echo "Running Legacy C++ Neural RPS Implementation"
+echo "============================================="
+echo "Output will be saved to legacy_cpp_demo_output.txt"
+echo "Note: This may take a while as it runs a full training session."
+echo
+cd legacy_cpp_implementation/build && ./src/legacy_neural_rps || echo "Legacy C++ demo failed to run. Please check your environment."
+cd ../..
+
 # C++ Demo
 echo
 echo "============================================="
-echo "Running C++ Neural RPS Demo"
+echo "Running C++ Neural RPS Simplified Demo"
 echo "============================================="
 echo "Output will be saved to cpp_demo_output.txt"
 echo
-cd cpp_implementation/build && ./neural_rps || echo "C++ demo failed to run. Please check your environment."
+cd cpp_implementation/build && ./neural_rps_demo || echo "C++ demo failed to run. Please check your environment."
 cd ../..
+
+echo
+echo "Note: The full C++ neural implementation can also be run with:"
+echo "cd cpp_implementation/build && ./neural_rps_full"
+echo "or using: make run-cpp-full"
+echo
 
 # Go Demo
 echo
@@ -57,8 +74,14 @@ echo "============================================="
 echo "All demos completed. Output files in project root:"
 
 # Check which files were successfully generated
+if [ -f "legacy_cpp_demo_output.txt" ]; then
+  echo "✅ legacy_cpp_demo_output.txt - Legacy C++ implementation output"
+else
+  echo "❌ legacy_cpp_demo_output.txt - NOT GENERATED (error during execution?)"
+fi
+
 if [ -f "cpp_demo_output.txt" ]; then
-  echo "✅ cpp_demo_output.txt - C++ implementation output"
+  echo "✅ cpp_demo_output.txt - Simplified C++ demo output"
 else
   echo "❌ cpp_demo_output.txt - NOT GENERATED (error during execution?)"
 fi

@@ -6,27 +6,27 @@ A neural network-based implementation of Rock Paper Scissors using different app
 
 This project explores different implementations of neural networks for playing Rock Paper Scissors:
 
-1. **Legacy C++ Implementation** - The original, fully-functional implementation with complete neural network
-2. **C++ Implementation** - A simplified demonstration implementation
+1. **Legacy C++ Implementation** - The original, fully-functional implementation with complete neural network that learns to play Rock Paper Scissors effectively
+2. **C++ Implementation** - A simplified demonstration version, plus an integrated full neural network
 3. **Golang Implementation** - An improved implementation with better readability, performance, and development setup
 4. **AlphaGo-Style Demo** - A demonstration of AlphaGo-like techniques applied to Tic-Tac-Toe
 
 ## Features
 
 - Neural network implementation with one hidden layer
-- PPO algorithm for policy optimization
+- PPO (Proximal Policy Optimization) algorithm for reinforcement learning
 - Game environment with state tracking
 - Visualization of network architecture, weights, and training progress
-- Demonstration games after training
+- Demonstration games after training showing the neural network's learned strategy
 - AlphaGo-style demo with Monte Carlo Tree Search and neural networks for Tic-Tac-Toe
 
 ## Project Structure
 
 ```
 .
-├── legacy_cpp_implementation/ # Original fully-functional C++ implementation
-├── cpp_implementation/        # Simplified C++ demonstration
-├── golang_implementation/     # First-pass Golang implementation
+├── legacy_cpp_implementation/ # Original fully-functional C++ implementation with separate include/src
+├── cpp_implementation/        # Simplified C++ demonstration plus full implementation
+├── golang_implementation/     # Go implementation with improved architecture
 ├── alphago_demo/              # AlphaGo-style Tic-Tac-Toe demo
 └── output/                    # Training output and visualizations
 ```
@@ -38,6 +38,7 @@ This project explores different implementations of neural networks for playing R
 - Eigen3 library for the C++ implementations (matrix operations)
   - On macOS: `brew install eigen`
   - On Ubuntu: `apt-get install libeigen3-dev`
+  - On Windows: Download from http://eigen.tuxfamily.org/
 
 ## Building and Running
 
@@ -47,8 +48,14 @@ Use the provided Makefile to build and run the different implementations:
 # Build all implementations
 make build
 
-# Run the C++ implementation
+# Run the Legacy C++ implementation (complete neural network)
+make run-legacy-cpp
+
+# Run the simplified C++ demo
 make run-cpp
+
+# Run the full C++ neural implementation (similar to legacy but different architecture)
+make run-cpp-full
 
 # Run the Golang implementation
 make run-go
@@ -63,8 +70,6 @@ Or use the build_all.sh script to build and run all implementations in sequence:
 ./build_all.sh
 ```
 
-Note: The C++ implementation requires the Eigen3 library to be installed on your system.
-
 ## Running Demos and Comparing Output
 
 Each implementation can generate demo output to compare their approaches:
@@ -72,16 +77,14 @@ Each implementation can generate demo output to compare their approaches:
 ```bash
 # Run all demos and generate output files
 make run-demos
-
-# Or use the dedicated script:
-./run_demos.sh
 ```
 
 This will:
 1. Build all implementations
 2. Run a demo of each implementation
 3. Generate output files in the project root directory:
-   - `cpp_demo_output.txt` - C++ implementation output
+   - `legacy_cpp_demo_output.txt` - Original C++ implementation output
+   - `cpp_demo_output.txt` - Simplified C++ demo output
    - `go_demo_output.txt` - Golang implementation output
    - `alphago_demo_output.txt` - AlphaGo demo output
 
@@ -107,35 +110,29 @@ cd golang_implementation && go mod tidy
 # For the AlphaGo demo
 cd alphago_demo && go mod tidy
 
-# For the C++ implementation (if you're on macOS)
+# For the C++ implementations (if you're on macOS)
 brew install eigen
 ```
 
-## Usage
+## Implementation Comparison
 
-Run the Golang implementation:
-```bash
-make run-go
-```
+Here's a quick comparison of the different implementations:
 
-Run the C++ implementation:
-```bash
-make run-cpp
-```
-
-Run the AlphaGo-style Tic-Tac-Toe demo:
-```bash
-make run-alphago
-```
+| Implementation | Language | Architecture | Training Method | Features |
+|----------------|----------|--------------|----------------|----------|
+| Legacy C++ | C++17 | Modular with separate header/source files | PPO | Original neural network with complete game logic |
+| C++ Demo | C++17 | Combined header files | Simplified | Demonstration version and full implementation |
+| Golang | Go 1.16+ | Modular packages | PPO | Improved architecture and performance |
+| AlphaGo Demo | Go 1.16+ | AlphaGo-inspired | MCTS + Neural Network | Applied to Tic-Tac-Toe as a demonstration |
 
 ## Implementation Details
 
 Each implementation has its own README in its respective directory with more detailed information:
 
-- [Legacy C++ Implementation](legacy_cpp_implementation/README.md)
-- [C++ Implementation](cpp_implementation/README.md)
-- [Golang Implementation](golang_implementation/README.md)
-- [AlphaGo Demo](alphago_demo/README.md)
+- [Legacy C++ Implementation](legacy_cpp_implementation/README.md) - Original implementation with complete neural network
+- [C++ Implementation](cpp_implementation/README.md) - Simplified version and full implementation
+- [Golang Implementation](golang_implementation/README.md) - Go-based implementation with improved architecture
+- [AlphaGo Demo](alphago_demo/README.md) - Demonstration of AlphaGo techniques
 
 ## License
 
