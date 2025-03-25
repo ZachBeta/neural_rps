@@ -3,6 +3,9 @@
 
 ## in progress
 
+* clean up redundant scripts and makes
+* refactor game logic and tournament runner into a new package, so we can have a "game server", and have the implementations be focused on the neural networks that play the game
+
 ### rps tac toe
 * can we improve training performance by paralellizing with goroutines?
 * can we improve our displays of the training process? I want more insight into how well it's going, how complex the neural network is
