@@ -1,0 +1,100 @@
+Building Legacy C++ implementation...
+cd legacy_cpp_implementation && mkdir -p build && cd build && cmake .. && make
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/zmorek/workspace/ZachBeta/neural_rps/legacy_cpp_implementation/build
+[ 25%] Built target legacy_neural_rps
+[ 41%] Built target test_card
+[ 58%] Built target test_environment
+[ 83%] Built target test_neural_network
+[100%] Built target test_ppo_agent
+Running Legacy C++ implementation...
+./legacy_cpp_implementation/build/src/legacy_neural_rps
+Starting training...
+
+Current State:
+Last played: Warrior
+Action probabilities:
+Warrior: 0.402
+Mage: 0.298
+Archer: 0.300
+
+Current State:
+Last played: Mage
+Action probabilities:
+Warrior: 0.413
+Mage: 0.324
+Archer: 0.263
+
+Current State:
+Last played: Archer
+Action probabilities:
+Warrior: 0.332
+Mage: 0.340
+Archer: 0.328
+
+Current State:
+Last played: Warrior
+Action probabilities:
+Warrior: 0.373
+Mage: 0.307
+Archer: 0.320
+
+Current State:
+Last played: Mage
+Action probabilities:
+Warrior: 0.345
+Mage: 0.360
+Archer: 0.296
+
+Current State:
+Last played: Archer
+Action probabilities:
+Warrior: 0.306
+Mage: 0.347
+Archer: 0.347
+Episode 10, Average Reward: -0.200
+Episode 20, Average Reward: -0.500
+Episode 30, Average Reward: -0.500
+Episode 40, Average Reward: -0.200
+Episode 50, Average Reward: -0.200
+Episode 60, Average Reward: 0.100
+Episode 70, Average Reward: -1.600
+Episode 80, Average Reward: -1.300
+Episode 90, Average Reward: 1.200
+Episode 100, Average Reward: -0.400
+
+Current State:
+Last played: Mage
+Action probabilities:
+Warrior: 0.363
+Mage: 0.313
+Archer: 0.324
+
+Current State:
+Last played: Archer
+Action probabilities:
+Warrior: 0.379
+Mage: 0.286
+Archer: 0.336
+
+Current State:
+Last played: Warrior
+Action probabilities:
+Warrior: 0.342
+Mage: 0.341
+Archer: 0.316
+
+Current State:
+Last played: Warrior
+Action probabilities:
+Warrior: 0.340
+Mage: 0.369
+Archer: 0.290
+
+Current State:
+Last played: Archer
+Action probabilities:
+Warrior: 0.379
+Mage: 0.283
+Archer: 0.337
