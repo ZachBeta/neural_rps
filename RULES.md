@@ -1,5 +1,9 @@
 # Neural Network Rock Paper Scissors
 
+* first pass in cpp rps
+* second pass in golang rps
+* third pass in golang agains tic tac toe
+
 ## Project Overview
 This project implements a neural network to play Rock Paper Scissors. The neural network will learn from gameplay data to predict and make optimal moves against human players.
 
