@@ -221,20 +221,30 @@ func (g *RPSGame) cardBeats(card1, card2 RPSCard) bool {
 
 // IsGameOver checks if the game is over
 func (g *RPSGame) IsGameOver() bool {
-	// Game ends when both players are out of cards or maximum rounds reached
-	return (len(g.Player1Hand) == 0 && len(g.Player2Hand) == 0) || g.Round > g.MaxRounds
+	// Game ends when both players are out of cards, maximum rounds reached, or no valid moves for current player
+	if len(g.Player1Hand) == 0 && len(g.Player2Hand) == 0 {
+		return true
+	}
+
+	if g.Round > g.MaxRounds {
+		return true
+	}
+
+	// Check if current player has valid moves
+	if len(g.GetValidMoves()) == 0 {
+		return true
+	}
+
+	return false
 }
 
 // GetWinner returns the winner of the game
 func (g *RPSGame) GetWinner() RPSPlayer {
-	if !g.IsGameOver() {
-		return NoPlayer
-	}
-
 	// Count cards owned by each player
 	player1Count := 0
 	player2Count := 0
 
+	// Count only cards on the board
 	for _, card := range g.Board {
 		if card.Owner == Player1 {
 			player1Count++
@@ -242,6 +252,8 @@ func (g *RPSGame) GetWinner() RPSPlayer {
 			player2Count++
 		}
 	}
+
+	// Hand cards don't count towards victory - only cards on the board matter
 
 	if player1Count > player2Count {
 		return Player1
@@ -382,6 +394,17 @@ func (g *RPSGame) String() string {
 			sb.WriteString("s ")
 		}
 	}
+
+	// Add card counts (DEBUG INFO)
+	var player1Count, player2Count int
+	for _, card := range g.Board {
+		if card.Owner == Player1 {
+			player1Count++
+		} else if card.Owner == Player2 {
+			player2Count++
+		}
+	}
+	sb.WriteString(fmt.Sprintf("\n\nCard Counts: Player 1 (UPPERCASE): %d, Player 2 (lowercase): %d", player1Count, player2Count))
 
 	// Add current player and game status
 	sb.WriteString("\n")

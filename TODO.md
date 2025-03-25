@@ -3,10 +3,8 @@
 
 ## in progress
 
-### housekeeping
-
-* rules is outdated
-* readmes probably are too
+### rps tac toe
+* a full game should probably involve a board switch, there definitely is an imbalance between first and second like black and white in chess
 
 ### standarizing the model inputs and outputs to compare effectiveness
 * move from tic tac toe to rps card game - I thought this was done

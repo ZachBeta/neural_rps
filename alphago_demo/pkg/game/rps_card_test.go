@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -236,5 +237,168 @@ func TestRPSGetBoardAsFeatures(t *testing.T) {
 	}
 	if features[4*9+3+2] != 1.0 { // Player2 ownership
 		t.Errorf("Expected Player2 ownership feature, got %f", features[4*9+3+2])
+	}
+}
+
+func TestWinnerDeterminationWithMoreCards(t *testing.T) {
+	// Create a new game
+	game := NewRPSGame(15, 5, 10)
+
+	// Create a specific board configuration where Player1 has more cards
+	// Board:
+	//   0 1 2
+	// 0 s P R
+	// 1 s R R
+	// 2 p r P
+	// Player1 (uppercase): 5 cards
+	// Player2 (lowercase): 4 cards
+
+	// Clear the board first (in case there are default values)
+	for i := range game.Board {
+		game.Board[i] = RPSCard{Type: Rock, Owner: NoPlayer}
+	}
+
+	// Set up the board
+	game.Board[0] = RPSCard{Type: Scissors, Owner: Player2} // Position 0,0: s
+	game.Board[1] = RPSCard{Type: Paper, Owner: Player1}    // Position 0,1: P
+	game.Board[2] = RPSCard{Type: Rock, Owner: Player1}     // Position 0,2: R
+	game.Board[3] = RPSCard{Type: Scissors, Owner: Player2} // Position 1,0: s
+	game.Board[4] = RPSCard{Type: Rock, Owner: Player1}     // Position 1,1: R
+	game.Board[5] = RPSCard{Type: Rock, Owner: Player1}     // Position 1,2: R
+	game.Board[6] = RPSCard{Type: Paper, Owner: Player2}    // Position 2,0: p
+	game.Board[7] = RPSCard{Type: Rock, Owner: Player2}     // Position 2,1: r
+	game.Board[8] = RPSCard{Type: Paper, Owner: Player1}    // Position 2,2: P
+
+	// Empty the hands to simulate end of game
+	game.Player1Hand = []RPSCard{}
+	game.Player2Hand = []RPSCard{}
+
+	// Manually set Round to be greater than MaxRounds to ensure game is over
+	game.Round = game.MaxRounds + 1
+
+	// Verify game is over
+	if !game.IsGameOver() {
+		t.Fatal("Game should be over but IsGameOver() returned false")
+	}
+
+	// Test winner determination
+	winner := game.GetWinner()
+
+	// Debug print
+	var player1Count, player2Count int
+	for _, card := range game.Board {
+		if card.Owner == Player1 {
+			player1Count++
+		} else if card.Owner == Player2 {
+			player2Count++
+		}
+	}
+	t.Logf("Debug: Player1 has %d cards, Player2 has %d cards", player1Count, player2Count)
+
+	// Player1 should win (5 cards vs 4 cards)
+	if winner != Player1 {
+		t.Errorf("Expected Player1 to win (with 5 cards vs 4), but got %v", winner)
+	}
+}
+
+func TestBoardStringRepresentation(t *testing.T) {
+	// Create a new game
+	game := NewRPSGame(15, 5, 10)
+
+	// Set up the same board configuration as in the winner determination test
+	// Board:
+	//   0 1 2
+	// 0 s P R
+	// 1 s R R
+	// 2 p r P
+	// Player1 (uppercase): 5 cards
+	// Player2 (lowercase): 4 cards
+
+	// Clear the board first (in case there are default values)
+	for i := range game.Board {
+		game.Board[i] = RPSCard{Type: Rock, Owner: NoPlayer}
+	}
+
+	// Set up the board
+	game.Board[0] = RPSCard{Type: Scissors, Owner: Player2} // Position 0,0: s
+	game.Board[1] = RPSCard{Type: Paper, Owner: Player1}    // Position 0,1: P
+	game.Board[2] = RPSCard{Type: Rock, Owner: Player1}     // Position 0,2: R
+	game.Board[3] = RPSCard{Type: Scissors, Owner: Player2} // Position 1,0: s
+	game.Board[4] = RPSCard{Type: Rock, Owner: Player1}     // Position 1,1: R
+	game.Board[5] = RPSCard{Type: Rock, Owner: Player1}     // Position 1,2: R
+	game.Board[6] = RPSCard{Type: Paper, Owner: Player2}    // Position 2,0: p
+	game.Board[7] = RPSCard{Type: Rock, Owner: Player2}     // Position 2,1: r
+	game.Board[8] = RPSCard{Type: Paper, Owner: Player1}    // Position 2,2: P
+
+	// Empty the hands to simulate end of game
+	game.Player1Hand = []RPSCard{}
+	game.Player2Hand = []RPSCard{}
+
+	// Manually set Round to be greater than MaxRounds to ensure game is over
+	game.Round = game.MaxRounds + 1
+
+	// Get the string representation
+	boardStr := game.String()
+
+	// Print the board for debugging
+	t.Logf("Board string representation:\n%s", boardStr)
+
+	// Verify that the board is displayed correctly
+	// Parse the board representation (first 3 lines after the header)
+	lines := strings.Split(boardStr, "\n")
+
+	// Check the board header
+	if !strings.Contains(lines[0], "0 1 2") {
+		t.Errorf("Expected board header to contain column numbers, got: %s", lines[0])
+	}
+
+	// Check row 0
+	row0 := lines[1]
+	if !strings.Contains(row0, "s P R") {
+		t.Errorf("Row 0 does not match expected output. Got: %s", row0)
+	}
+
+	// Check row 1
+	row1 := lines[2]
+	if !strings.Contains(row1, "s R R") {
+		t.Errorf("Row 1 does not match expected output. Got: %s", row1)
+	}
+
+	// Check row 2
+	row2 := lines[3]
+	if !strings.Contains(row2, "p r P") {
+		t.Errorf("Row 2 does not match expected output. Got: %s", row2)
+	}
+
+	// Count uppercase and lowercase letters in the board representation
+	uppercase := 0
+	lowercase := 0
+
+	// Only check the actual board part (first 3 rows after header)
+	for i := 1; i <= 3; i++ {
+		for _, ch := range lines[i] {
+			if ch >= 'A' && ch <= 'Z' {
+				uppercase++
+			} else if ch >= 'a' && ch <= 'z' {
+				lowercase++
+			}
+		}
+	}
+
+	t.Logf("Uppercase (Player1) count: %d, Lowercase (Player2) count: %d", uppercase, lowercase)
+
+	// Verify the counts match our expectation
+	if uppercase != 5 {
+		t.Errorf("Expected 5 uppercase letters (Player1 cards), but found %d", uppercase)
+	}
+
+	if lowercase != 4 {
+		t.Errorf("Expected 4 lowercase letters (Player2 cards), but found %d", lowercase)
+	}
+
+	// Verify game winner information is displayed correctly
+	if !strings.Contains(boardStr, "Game over: Player 1 wins") {
+		t.Errorf("Expected 'Game over: Player 1 wins' in output, but found: %s",
+			strings.Join(lines[len(lines)-1:], " "))
 	}
 }
