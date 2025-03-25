@@ -1,0 +1,322 @@
+Neural Network Architecture:
+Input: 9 neurons
+  ↓
+Hidden: 64 neurons
+  ↓
+Output: 3 neurons
+Starting training...
+Action Probabilities:
+Warrior: 0.3161
+Mage: 0.2783
+Archer: 0.4056
+Action Probabilities:
+Warrior: 0.2562
+Mage: 0.4191
+Archer: 0.3247
+Action Probabilities:
+Warrior: 0.2925
+Mage: 0.2811
+Archer: 0.4264
+Episode 10, Average Reward: 0.300
+Episode 20, Average Reward: 0.200
+Episode 30, Average Reward: -0.400
+Episode 40, Average Reward: 0.900
+Episode 50, Average Reward: 0.400
+Episode 60, Average Reward: 0.400
+Episode 70, Average Reward: -0.200
+Episode 80, Average Reward: 0.000
+Episode 90, Average Reward: -0.400
+Episode 100, Average Reward: -0.100
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: 0.1100
+Total episodes: 100
+Action Probabilities:
+Warrior: 0.2601
+Mage: 0.3917
+Archer: 0.3482
+Action Probabilities:
+Warrior: 0.3152
+Mage: 0.3451
+Archer: 0.3397
+Action Probabilities:
+Warrior: 0.3035
+Mage: 0.2339
+Archer: 0.4627
+Episode 110, Average Reward: -0.300
+Episode 120, Average Reward: -0.100
+Episode 130, Average Reward: 0.000
+Episode 140, Average Reward: 0.400
+Episode 150, Average Reward: -0.200
+Episode 160, Average Reward: -0.400
+Episode 170, Average Reward: 0.500
+Episode 180, Average Reward: 0.500
+Episode 190, Average Reward: -0.300
+Episode 200, Average Reward: 0.400
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: 0.0500
+Total episodes: 200
+Action Probabilities:
+Warrior: 0.3327
+Mage: 0.2572
+Archer: 0.4102
+Action Probabilities:
+Warrior: 0.2601
+Mage: 0.3917
+Archer: 0.3482
+Action Probabilities:
+Warrior: 0.3035
+Mage: 0.2339
+Archer: 0.4627
+Episode 210, Average Reward: 0.500
+Episode 220, Average Reward: 0.000
+Episode 230, Average Reward: -0.300
+Episode 240, Average Reward: -0.200
+Episode 250, Average Reward: 0.700
+Episode 260, Average Reward: 0.600
+Episode 270, Average Reward: 0.100
+Episode 280, Average Reward: -0.800
+Episode 290, Average Reward: 0.400
+Episode 300, Average Reward: 0.200
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: 0.1200
+Total episodes: 300
+Action Probabilities:
+Warrior: 0.2562
+Mage: 0.4191
+Archer: 0.3247
+Action Probabilities:
+Warrior: 0.3152
+Mage: 0.3451
+Archer: 0.3397
+Action Probabilities:
+Warrior: 0.3152
+Mage: 0.3451
+Archer: 0.3397
+Episode 310, Average Reward: -0.100
+Episode 320, Average Reward: -0.200
+Episode 330, Average Reward: 0.300
+Episode 340, Average Reward: 0.000
+Episode 350, Average Reward: -0.100
+Episode 360, Average Reward: -0.100
+Episode 370, Average Reward: 0.200
+Episode 380, Average Reward: 1.200
+Episode 390, Average Reward: 0.200
+Episode 400, Average Reward: 0.900
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: 0.2300
+Total episodes: 400
+Action Probabilities:
+Warrior: 0.2601
+Mage: 0.3917
+Archer: 0.3482
+Action Probabilities:
+Warrior: 0.3101
+Mage: 0.2473
+Archer: 0.4426
+Action Probabilities:
+Warrior: 0.3049
+Mage: 0.3367
+Archer: 0.3583
+Episode 410, Average Reward: 0.800
+Episode 420, Average Reward: -0.100
+Episode 430, Average Reward: -0.300
+Episode 440, Average Reward: -0.900
+Episode 450, Average Reward: -0.400
+Episode 460, Average Reward: -0.600
+Episode 470, Average Reward: 0.100
+Episode 480, Average Reward: 0.400
+Episode 490, Average Reward: 0.500
+Episode 500, Average Reward: 0.700
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: 0.0200
+Total episodes: 500
+Action Probabilities:
+Warrior: 0.3061
+Mage: 0.3495
+Archer: 0.3443
+Action Probabilities:
+Warrior: 0.2784
+Mage: 0.2473
+Archer: 0.4743
+Action Probabilities:
+Warrior: 0.3547
+Mage: 0.2706
+Archer: 0.3747
+Episode 510, Average Reward: -0.400
+Episode 520, Average Reward: 0.100
+Episode 530, Average Reward: -0.400
+Episode 540, Average Reward: 0.100
+Episode 550, Average Reward: -1.000
+Episode 560, Average Reward: 0.500
+Episode 570, Average Reward: 0.000
+Episode 580, Average Reward: -1.200
+Episode 590, Average Reward: -0.100
+Episode 600, Average Reward: -0.300
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: -0.2700
+Total episodes: 600
+Action Probabilities:
+Warrior: 0.3061
+Mage: 0.3495
+Archer: 0.3443
+Action Probabilities:
+Warrior: 0.2190
+Mage: 0.3596
+Archer: 0.4214
+Action Probabilities:
+Warrior: 0.2453
+Mage: 0.4345
+Archer: 0.3202
+Episode 610, Average Reward: 0.300
+Episode 620, Average Reward: 0.300
+Episode 630, Average Reward: 0.000
+Episode 640, Average Reward: -0.600
+Episode 650, Average Reward: -0.100
+Episode 660, Average Reward: -0.600
+Episode 670, Average Reward: -0.300
+Episode 680, Average Reward: 0.200
+Episode 690, Average Reward: -0.100
+Episode 700, Average Reward: -0.300
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: -0.1200
+Total episodes: 700
+Action Probabilities:
+Warrior: 0.3070
+Mage: 0.3652
+Archer: 0.3278
+Action Probabilities:
+Warrior: 0.2838
+Mage: 0.2535
+Archer: 0.4628
+Action Probabilities:
+Warrior: 0.3239
+Mage: 0.3434
+Archer: 0.3328
+Episode 710, Average Reward: -0.600
+Episode 720, Average Reward: 0.400
+Episode 730, Average Reward: 0.400
+Episode 740, Average Reward: 0.700
+Episode 750, Average Reward: 0.500
+Episode 760, Average Reward: 0.600
+Episode 770, Average Reward: 0.000
+Episode 780, Average Reward: 0.100
+Episode 790, Average Reward: 0.100
+Episode 800, Average Reward: -0.400
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: 0.1800
+Total episodes: 800
+Action Probabilities:
+Warrior: 0.3695
+Mage: 0.2761
+Archer: 0.3544
+Action Probabilities:
+Warrior: 0.2964
+Mage: 0.2205
+Archer: 0.4831
+Action Probabilities:
+Warrior: 0.3547
+Mage: 0.2706
+Archer: 0.3747
+Episode 810, Average Reward: 0.000
+Episode 820, Average Reward: 0.100
+Episode 830, Average Reward: 1.200
+Episode 840, Average Reward: 0.300
+Episode 850, Average Reward: 0.300
+Episode 860, Average Reward: 0.300
+Episode 870, Average Reward: -0.400
+Episode 880, Average Reward: 0.100
+Episode 890, Average Reward: 0.100
+Episode 900, Average Reward: 0.400
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: 0.2400
+Total episodes: 900
+Action Probabilities:
+Warrior: 0.2555
+Mage: 0.3459
+Archer: 0.3986
+Action Probabilities:
+Warrior: 0.3239
+Mage: 0.3434
+Archer: 0.3328
+Action Probabilities:
+Warrior: 0.3035
+Mage: 0.2339
+Archer: 0.4627
+Episode 910, Average Reward: -0.700
+Episode 920, Average Reward: 0.100
+Episode 930, Average Reward: -0.600
+Episode 940, Average Reward: 0.100
+Episode 950, Average Reward: 0.200
+Episode 960, Average Reward: -0.400
+Episode 970, Average Reward: 0.400
+Episode 980, Average Reward: 0.400
+Episode 990, Average Reward: 0.000
+Episode 1000, Average Reward: -0.100
+Network Weights:
+Training Progress:
+Last 100 episodes average reward: -0.0600
+Total episodes: 1000
+
+Training completed!
+
+Playing demonstration games...
+
+Game 1:
+Action Probabilities:
+Warrior: 0.3386
+Mage: 0.2334
+Archer: 0.4280
+Agent played: Archer, Reward: 1.00
+Action Probabilities:
+Warrior: 0.2838
+Mage: 0.2535
+Archer: 0.4628
+Agent played: Mage, Reward: 1.00
+Action Probabilities:
+Warrior: 0.2464
+Mage: 0.3539
+Archer: 0.3997
+Agent played: Archer, Reward: -1.00
+
+Game 2:
+Action Probabilities:
+Warrior: 0.2839
+Mage: 0.2755
+Archer: 0.4406
+Agent played: Mage, Reward: 1.00
+Action Probabilities:
+Warrior: 0.2964
+Mage: 0.2205
+Archer: 0.4831
+Agent played: Warrior, Reward: 1.00
+Action Probabilities:
+Warrior: 0.2616
+Mage: 0.4076
+Archer: 0.3308
+Agent played: Archer, Reward: 0.00
+
+Game 3:
+Action Probabilities:
+Warrior: 0.3327
+Mage: 0.2572
+Archer: 0.4102
+Agent played: Mage, Reward: 0.00
+Action Probabilities:
+Warrior: 0.3101
+Mage: 0.2473
+Archer: 0.4426
+Agent played: Warrior, Reward: -1.00
+Action Probabilities:
+Warrior: 0.3049
+Mage: 0.3367
+Archer: 0.3583
+Agent played: Warrior, Reward: 1.00

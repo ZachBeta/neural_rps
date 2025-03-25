@@ -2,58 +2,29 @@ package neural
 
 import (
 	"encoding/binary"
-	"fmt"
 	"math"
-	"math/rand"
 	"os"
 
 	"gonum.org/v1/gonum/mat"
 )
 
-// Network represents a neural network with one hidden layer
+// Network represents a neural network
 type Network struct {
-	inputSize  int
-	hiddenSize int
-	outputSize int
-	weights1   *mat.Dense // hidden layer weights
-	bias1      *mat.VecDense
-	weights2   *mat.Dense // output layer weights
-	bias2      *mat.VecDense
+	inputSize   int
+	hiddenSize  int
+	outputSize  int
+	hiddenLayer *Layer
+	outputLayer *Layer
 }
 
-// NewNetwork creates a new neural network with Xavier initialization
+// NewNetwork creates a new neural network
 func NewNetwork(inputSize, hiddenSize, outputSize int) *Network {
-	// Xavier initialization bounds
-	w1Bound := math.Sqrt(6.0 / float64(inputSize+hiddenSize))
-	w2Bound := math.Sqrt(6.0 / float64(hiddenSize+outputSize))
-
-	// Initialize weights and biases
-	weights1 := mat.NewDense(hiddenSize, inputSize, nil)
-	bias1 := mat.NewVecDense(hiddenSize, nil)
-	weights2 := mat.NewDense(outputSize, hiddenSize, nil)
-	bias2 := mat.NewVecDense(outputSize, nil)
-
-	// Random initialization
-	for i := 0; i < hiddenSize; i++ {
-		for j := 0; j < inputSize; j++ {
-			weights1.Set(i, j, (rand.Float64()*2-1)*w1Bound)
-		}
-	}
-
-	for i := 0; i < outputSize; i++ {
-		for j := 0; j < hiddenSize; j++ {
-			weights2.Set(i, j, (rand.Float64()*2-1)*w2Bound)
-		}
-	}
-
 	return &Network{
-		inputSize:  inputSize,
-		hiddenSize: hiddenSize,
-		outputSize: outputSize,
-		weights1:   weights1,
-		bias1:      bias1,
-		weights2:   weights2,
-		bias2:      bias2,
+		inputSize:   inputSize,
+		hiddenSize:  hiddenSize,
+		outputSize:  outputSize,
+		hiddenLayer: NewLayer(inputSize, hiddenSize),
+		outputLayer: NewLayer(hiddenSize, outputSize),
 	}
 }
 
@@ -97,77 +68,71 @@ func softmax(x []float64) []float64 {
 
 // Forward performs a forward pass through the network
 func (n *Network) Forward(input []float64) []float64 {
-	// Convert input to matrix
-	inputVec := mat.NewVecDense(n.inputSize, input)
+	// Convert input to vector
+	inputVec := mat.NewVecDense(len(input), input)
 
-	// Hidden layer
-	hidden := mat.NewVecDense(n.hiddenSize, nil)
-	hidden.MulVec(n.weights1, inputVec)
-	hidden.AddVec(hidden, n.bias1)
+	// Forward pass through hidden layer
+	hiddenOutput := n.hiddenLayer.Forward(inputVec)
 
-	// Apply ReLU to hidden layer
-	for i := 0; i < n.hiddenSize; i++ {
-		hidden.SetVec(i, relu(hidden.AtVec(i)))
-	}
+	// Forward pass through output layer
+	output := n.outputLayer.Forward(hiddenOutput)
 
-	// Output layer
-	output := mat.NewVecDense(n.outputSize, nil)
-	output.MulVec(n.weights2, hidden)
-	output.AddVec(output, n.bias2)
-
-	// Convert output to slice and apply softmax
+	// Convert output to slice
 	outputSlice := make([]float64, n.outputSize)
 	for i := 0; i < n.outputSize; i++ {
 		outputSlice[i] = output.AtVec(i)
 	}
-	return softmax(outputSlice)
+
+	return outputSlice
+}
+
+// Backward performs backpropagation through the network
+func (n *Network) Backward(input []float64, output []float64, gradients []float64, learningRate float64) {
+	// Convert input to vector format
+	inputVec := mat.NewVecDense(len(input), input)
+	outputVec := mat.NewVecDense(len(output), output)
+	gradientVec := mat.NewVecDense(len(gradients), gradients)
+
+	// Forward pass to compute hidden layer activations
+	hiddenOutput := n.hiddenLayer.Forward(inputVec)
+
+	// Output layer gradients
+	outputGrads := mat.NewVecDense(n.outputSize, nil)
+	outputGrads.SubVec(outputVec, gradientVec)
+	outputGrads.ScaleVec(-1, outputGrads)
+
+	// Backward pass through output layer
+	hiddenGrads, _ := n.outputLayer.Backward(hiddenOutput, outputVec, outputGrads, learningRate)
+
+	// Apply ReLU derivative to hidden gradients
+	for i := 0; i < n.hiddenSize; i++ {
+		if hiddenOutput.AtVec(i) <= 0 {
+			hiddenGrads.SetVec(i, 0)
+		}
+	}
+
+	// Backward pass through hidden layer
+	_, _ = n.hiddenLayer.Backward(inputVec, hiddenOutput, hiddenGrads, learningRate)
+}
+
+// dotProduct computes the dot product of two slices
+func dotProduct(a, b []float64) float64 {
+	sum := 0.0
+	for i := range a {
+		sum += a[i] * b[i]
+	}
+	return sum
 }
 
 // SaveWeights saves the network weights to a file
 func (n *Network) SaveWeights(filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Save dimensions
-	writeInt(file, n.inputSize)
-	writeInt(file, n.hiddenSize)
-	writeInt(file, n.outputSize)
-
-	// Save weights and biases
-	writeMatrix(file, n.weights1)
-	writeVector(file, n.bias1)
-	writeMatrix(file, n.weights2)
-	writeVector(file, n.bias2)
-
+	// TODO: Implement weight saving
 	return nil
 }
 
 // LoadWeights loads the network weights from a file
 func (n *Network) LoadWeights(filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Load and verify dimensions
-	inputSize := readInt(file)
-	hiddenSize := readInt(file)
-	outputSize := readInt(file)
-
-	if inputSize != n.inputSize || hiddenSize != n.hiddenSize || outputSize != n.outputSize {
-		return fmt.Errorf("model architecture mismatch in file: %s", filename)
-	}
-
-	// Load weights and biases
-	n.weights1 = readMatrix(file, hiddenSize, inputSize)
-	n.bias1 = readVector(file, hiddenSize)
-	n.weights2 = readMatrix(file, outputSize, hiddenSize)
-	n.bias2 = readVector(file, outputSize)
-
+	// TODO: Implement weight loading
 	return nil
 }
 

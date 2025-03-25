@@ -17,6 +17,8 @@ type PPOAgent struct {
 	clipEpsilon  float64
 	valueCoeff   float64
 	entropyCoeff float64
+	lambda       float64
+	learningRate float64
 }
 
 // NewPPOAgent creates a new PPO agent
@@ -30,6 +32,8 @@ func NewPPOAgent(stateSize, actionSize int) *PPOAgent {
 		clipEpsilon:  0.2,
 		valueCoeff:   0.5,
 		entropyCoeff: 0.01,
+		lambda:       0.95,
+		learningRate: 0.001,
 	}
 }
 
@@ -90,78 +94,63 @@ func (a *PPOAgent) GetValue(state []float64) float64 {
 	return value
 }
 
-// Update updates the agent's policy using PPO
+// Update updates the policy and value networks using PPO
 func (a *PPOAgent) Update(states [][]float64, actions []int, rewards []float64, values []float64) {
 	if len(states) == 0 {
 		return
 	}
 
-	// Calculate advantages
+	// Compute advantages and returns
 	advantages := make([]float64, len(rewards))
+	returns := make([]float64, len(rewards))
+	lastValue := 0.0
 	for i := len(rewards) - 1; i >= 0; i-- {
-		if i == len(rewards)-1 {
-			advantages[i] = rewards[i] - values[i]
-		} else {
-			advantages[i] = rewards[i] + a.gamma*values[i+1] - values[i]
-		}
+		delta := rewards[i] + a.gamma*lastValue - values[i]
+		advantages[i] = delta + a.gamma*a.lambda*lastValue
+		returns[i] = rewards[i] + a.gamma*lastValue
+		lastValue = values[i]
 	}
 
 	// Normalize advantages
-	mean := 0.0
+	meanAdv := 0.0
+	stdAdv := 0.0
 	for _, adv := range advantages {
-		mean += adv
+		meanAdv += adv
 	}
-	mean /= float64(len(advantages))
-
-	std := 0.0
+	meanAdv /= float64(len(advantages))
 	for _, adv := range advantages {
-		diff := adv - mean
-		std += diff * diff
+		diff := adv - meanAdv
+		stdAdv += diff * diff
 	}
-	std = math.Sqrt(std / float64(len(advantages)))
-
-	if std > 0 {
-		for i := range advantages {
-			advantages[i] = (advantages[i] - mean) / std
-		}
+	stdAdv = math.Sqrt(stdAdv/float64(len(advantages)) + 1e-8)
+	for i := range advantages {
+		advantages[i] = (advantages[i] - meanAdv) / stdAdv
 	}
 
-	// Update policy
-	for i := 0; i < len(states); i++ {
-		oldProbs := a.GetPolicyProbs(states[i])
+	// Update policy network
+	for i, state := range states {
+		oldProbs := a.GetPolicyProbs(state)
 		oldProb := oldProbs[actions[i]]
 
-		// Calculate new probabilities
-		newProbs := a.GetPolicyProbs(states[i])
-		newProb := newProbs[actions[i]]
-
-		// Calculate ratio
-		ratio := newProb / oldProb
-
-		// Calculate clipped surrogate objective
-		surr1 := ratio * advantages[i]
-		surr2 := math.Max(math.Min(ratio, 1+a.epsilon), 1-a.epsilon) * advantages[i]
-		surr := math.Min(surr1, surr2)
-
-		// Calculate value loss
-		valueLoss := math.Pow(rewards[i]-a.GetValue(states[i]), 2)
-
-		// Calculate entropy bonus
-		entropy := 0.0
-		for _, prob := range newProbs {
-			if prob > 0 {
-				entropy -= prob * math.Log(prob)
+		// Compute policy gradients
+		gradients := make([]float64, a.actionSize)
+		for j := range gradients {
+			if j == actions[i] {
+				ratio := math.Exp(math.Log(oldProbs[j]) - math.Log(oldProb))
+				clippedRatio := math.Max(math.Min(ratio, 1.0+a.clipEpsilon), 1.0-a.clipEpsilon)
+				gradients[j] = math.Min(ratio*advantages[i], clippedRatio*advantages[i])
 			}
 		}
 
-		// Total loss
-		loss := -surr + a.valueCoeff*valueLoss - a.entropyCoeff*entropy
+		// Scale learning rate based on advantage magnitude but cap it
+		effectiveLR := a.learningRate * math.Min(math.Sqrt(math.Abs(advantages[i])), 1.0)
+		a.network.Backward(state, oldProbs, gradients, effectiveLR)
 
-		// Update network (simplified - in practice, you'd use proper gradient descent)
-		// This is just a placeholder for the actual update logic
-		// In a real implementation, you'd use backpropagation and gradient descent
-		// The loss value would be used to compute gradients and update weights
-		_ = loss // TODO: Implement proper gradient descent using the loss value
+		// Update value network with advantages as targets
+		value := a.GetValue(state)
+		valueGradients := []float64{advantages[i] - value}
+		valueOutput := []float64{value}
+		a.network.Backward(state, valueOutput, valueGradients, a.learningRate)
 	}
 }
 

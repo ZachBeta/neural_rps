@@ -1,4 +1,5 @@
 * migrate this to golang so it's easier to read and has a more ergonomic dev/build/test setup
+* confirm golang implementation is using paralellization features built into golang for best performance
 * visualize neural network
 * fix build warnings
 * hands need to be more complex
