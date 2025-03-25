@@ -2,8 +2,8 @@
 * ~~confirm golang implementation is using paralellization features built into golang for best performance~~ ✅ DONE
 * ~~visualize neural network~~ ✅ DONE
 * ~~implement AlphaGo-style demo with MCTS and neural networks~~ ✅ DONE
-* extract the cpp implementation into its own directory
-* extract the first pass golang implementation into its own directory
+* ~~extract the cpp implementation into its own directory~~ ✅ DONE
+* ~~extract the first pass golang implementation into its own directory~~ ✅ DONE
 * fix build warnings
 * hands need to be more complex
 * object oriented

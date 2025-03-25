@@ -1,12 +1,14 @@
 # Neural Rock Paper Scissors
 
-A neural network-based implementation of Rock Paper Scissors using Proximal Policy Optimization (PPO) in Go.
+A neural network-based implementation of Rock Paper Scissors using different approaches and languages.
 
 ## Overview
 
-This project implements a neural network agent that learns to play Rock Paper Scissors using reinforcement learning. The agent uses a Proximal Policy Optimization (PPO) algorithm to learn optimal strategies against a random opponent.
+This project explores different implementations of neural networks for playing Rock Paper Scissors:
 
-Additionally, the project includes an AlphaGo-style implementation for Tic-Tac-Toe that demonstrates the core principles of the AlphaGo algorithm in a simpler environment.
+1. **C++ Implementation** - The original implementation with basic neural network functionality
+2. **Golang Implementation** - An improved implementation with better readability, performance, and development setup
+3. **AlphaGo-Style Demo** - A demonstration of AlphaGo-like techniques applied to Tic-Tac-Toe
 
 ## Features
 
@@ -21,21 +23,45 @@ Additionally, the project includes an AlphaGo-style implementation for Tic-Tac-T
 
 ```
 .
-├── alphago_demo/        # AlphaGo-style Tic-Tac-Toe implementation
-├── cmd/
-│   └── neural_rps/     # Main program
-├── pkg/
-│   ├── agent/          # PPO agent implementation
-│   ├── game/           # Game environment
-│   ├── neural/         # Neural network implementation
-│   └── visualizer/     # Visualization utilities
-└── output/             # Training output and visualizations
+├── cpp_implementation/        # Original C++ implementation
+├── golang_implementation/     # First-pass Golang implementation
+├── alphago_demo/              # AlphaGo-style Tic-Tac-Toe demo
+└── output/                    # Training output and visualizations
 ```
 
 ## Requirements
 
-- Go 1.16 or later
-- gonum.org/v1/gonum/mat (for matrix operations)
+- Go 1.16 or later for the Golang implementation and AlphaGo demo
+- C++17 compatible compiler for the C++ implementation
+- Eigen3 library for the C++ implementation (matrix operations)
+  - On macOS: `brew install eigen`
+  - On Ubuntu: `apt-get install libeigen3-dev`
+
+## Building and Running
+
+Use the provided Makefile to build and run the different implementations:
+
+```bash
+# Build all implementations
+make build
+
+# Run the C++ implementation
+make run-cpp
+
+# Run the Golang implementation
+make run-go
+
+# Run the AlphaGo demo
+make run-alphago
+```
+
+Or use the build_all.sh script to build and run all implementations in sequence:
+
+```bash
+./build_all.sh
+```
+
+Note: The C++ implementation requires the Eigen3 library to be installed on your system.
 
 ## Installation
 
@@ -47,133 +73,40 @@ cd neural_rps
 
 2. Install dependencies:
 ```bash
-go mod tidy
+# For the Golang implementation
+cd golang_implementation && go mod tidy
+
+# For the AlphaGo demo
+cd alphago_demo && go mod tidy
+
+# For the C++ implementation (if you're on macOS)
+brew install eigen
 ```
 
 ## Usage
 
-Run the training program:
+Run the Golang implementation:
 ```bash
-go run cmd/neural_rps/main.go
+make run-go
 ```
 
-The program will:
-1. Initialize the neural network and environment
-2. Train the agent for 1000 episodes
-3. Visualize the training progress
-4. Play 3 demonstration games
+Run the C++ implementation:
+```bash
+make run-cpp
+```
 
 Run the AlphaGo-style Tic-Tac-Toe demo:
 ```bash
-cd alphago_demo
-./run.sh
+make run-alphago
 ```
 
-## Training Process
+## Implementation Details
 
-The agent learns through the following steps:
-1. Collects experience by playing games
-2. Updates its policy using PPO every 10 episodes
-3. Visualizes its progress and network state periodically
+Each implementation has its own README in its respective directory with more detailed information:
 
-## Visualization
-
-The program generates visualizations in the `output` directory:
-- Network architecture
-- Weight distributions
-- Action probabilities
-- Training progress
-
-## Neural Network Implementation in Go
-
-The neural network has been implemented in Go for better readability, performance, and developer experience. The implementation features:
-
-### Architecture
-
-- Simple feed-forward neural network with three layers:
-  - Input layer: 6 neurons (for encoding both player and opponent previous moves)
-  - Hidden layer: 12 neurons with ReLU activation
-  - Output layer: 3 neurons with softmax activation
-
-### Features
-
-- **Parallelized Training**: Utilizes Go's goroutines for efficient parallel processing during training
-- **Batch Processing**: Supports mini-batch gradient descent for improved training efficiency
-- **Xavier Initialization**: Weights initialized using Xavier/Glorot initialization for better convergence
-- **Visualization**: Built-in visualization tools for network architecture and training progress
-- **Persistence**: Save and load network weights using Go's encoding/gob
-
-### Usage
-
-Create and train a neural network:
-
-```go
-// Create a new neural network with 6 inputs, 12 hidden neurons, and 3 outputs
-nn := neural.NewNetwork(6, 12, 3)
-
-// Set up training options
-options := neural.TrainingOptions{
-    LearningRate: 0.01,
-    Epochs:       500,
-    BatchSize:    32,
-    Parallel:     true,
-}
-
-// Train the network
-nn.Train(inputs, targets, options)
-
-// Make predictions
-prediction := nn.Predict(input)
-
-// Save the trained model
-nn.SaveWeights("model.gob")
-
-// Load a saved model
-nn.LoadWeights("model.gob")
-```
-
-Visualize the network:
-
-```go
-// Create a visualizer that writes to a file
-visualizer, _ := neural.NewFileVisualizer("output.txt")
-defer visualizer.Close()
-
-// Visualize network architecture
-visualizer.VisualizeArchitecture(nn, []string{"Input", "Hidden", "Output"})
-visualizer.VisualizeNetworkGraphical(nn)
-
-// Visualize weights
-visualizer.VisualizeWeights(nn, inputLabels, hiddenLabels, outputLabels)
-
-// Visualize predictions
-visualizer.VisualizePrediction(nn, input, output, inputLabels, outputLabels)
-```
-
-## AlphaGo-Style Implementation
-
-The `alphago_demo` directory contains a complete implementation of an AlphaGo-style learning system for the game of Tic-Tac-Toe.
-
-### Features
-
-- **Neural Networks**: Policy network for move probabilities and value network for position evaluation
-- **Monte Carlo Tree Search**: Tree search algorithm guided by neural networks
-- **Self-Play Training**: System that learns by playing against itself
-- **Interactive Play**: Play against the trained AI
-
-### Components
-
-- Game logic and board representation
-- Neural network implementation with backpropagation
-- MCTS algorithm with UCB-based exploration
-- Self-play training system
-- Demo interface
-
-For more detailed information, see the [alphago_demo/IMPLEMENTATION.md](alphago_demo/IMPLEMENTATION.md) file.
-
-## Example
-
-See `cmd/neural_rps/main.go` for a complete example of training a neural network to play Rock, Paper, Scissors.
+- [C++ Implementation](cpp_implementation/README.md)
+- [Golang Implementation](golang_implementation/README.md)
+- [AlphaGo Demo](alphago_demo/README.md)
 
 ## License
 
