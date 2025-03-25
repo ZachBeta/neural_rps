@@ -1,100 +1,135 @@
-#include "NeuralNetwork.hpp"
+#include "Environment.hpp"
+#include "PPOAgent.hpp"
 #include <iostream>
-#include <string>
-#include <vector>
+#include <iomanip>
+#include <chrono>
+#include <thread>
 
-// Convert Move enum to string
-std::string move_to_string(Move move) {
-    switch (move) {
-        case Move::ROCK: return "Rock";
-        case Move::PAPER: return "Paper";
-        case Move::SCISSORS: return "Scissors";
-        default: return "Unknown";
+// Function to get valid actions
+std::vector<int> getValidActions(const Environment& env) {
+    std::vector<int> valid_actions;
+    for (int i = 0; i < 3; i++) {  // 3 card types
+        if (env.isValidAction(i)) {
+            valid_actions.push_back(i);
+        }
     }
+    return valid_actions;
 }
 
-// Convert string to Move enum
-Move string_to_move(const std::string& move_str) {
-    if (move_str == "r" || move_str == "R") return Move::ROCK;
-    if (move_str == "p" || move_str == "P") return Move::PAPER;
-    if (move_str == "s" || move_str == "S") return Move::SCISSORS;
-    throw std::invalid_argument("Invalid move");
-}
-
-// Create one-hot encoded vector for a move
-Eigen::VectorXd one_hot_encode(Move move) {
-    Eigen::VectorXd encoded = Eigen::VectorXd::Zero(3);
-    encoded(static_cast<int>(move)) = 1.0;
-    return encoded;
+// Function to print game state
+void printGameState(const Environment& env, const PPOAgent& agent) {
+    Eigen::VectorXd state = env.getState();
+    Eigen::VectorXd probs = agent.getPolicyProbs(state);
+    
+    std::cout << "\nCurrent State:\n";
+    std::cout << "Last played: ";
+    if (state.segment(0, 3).sum() == 0) {
+        std::cout << "None";
+    } else {
+        for (int i = 0; i < 3; i++) {
+            if (state(i) > 0) {
+                std::cout << Card(static_cast<CardType>(i)).getName();
+            }
+        }
+    }
+    std::cout << "\n";
+    
+    std::cout << "Action probabilities:\n";
+    for (int i = 0; i < 3; i++) {
+        std::cout << Card(static_cast<CardType>(i)).getName() << ": "
+                  << std::fixed << std::setprecision(3) << probs(i) << "\n";
+    }
 }
 
 int main() {
-    // Initialize neural network
-    NeuralNetwork nn;
+    Environment env;
+    PPOAgent agent(9, 3);  // 9 state dimensions, 3 actions
     
-    // Game state: [player_last_move (3), ai_last_move (3)]
-    Eigen::VectorXd game_state = Eigen::VectorXd::Zero(6);
-    Move ai_last_move = Move::ROCK;  // Default start
+    const int num_episodes = 1000;
+    const int episodes_per_update = 10;
     
-    std::cout << "Welcome to Neural Rock Paper Scissors!\n";
-    std::cout << "Enter your move (R/P/S) or Q to quit\n";
+    std::vector<Eigen::VectorXd> states;
+    std::vector<int> actions;
+    std::vector<float> rewards;
+    std::vector<float> values;
     
-    std::string input;
-    std::vector<Eigen::VectorXd> training_inputs;
-    std::vector<Eigen::VectorXd> training_targets;
+    float total_reward = 0.0f;
     
-    while (true) {
-        std::cout << "\nYour move (R/P/S/Q): ";
-        std::getline(std::cin, input);
+    std::cout << "Starting training...\n";
+    
+    for (int episode = 0; episode < num_episodes; episode++) {
+        env.reset();
+        float episode_reward = 0.0f;
         
-        if (input == "q" || input == "Q") break;
-        
-        try {
-            Move player_move = string_to_move(input);
+        while (true) {
+            Eigen::VectorXd state = env.getState();
+            std::vector<int> valid_actions = getValidActions(env);
             
-            // Store the current game state for training
-            training_inputs.push_back(game_state);
+            // Get action from policy
+            int action = agent.sampleAction(state, valid_actions);
+            float value = agent.getValue(state);
             
-            // Determine winning move against player's move
-            Move winning_move;
-            switch (player_move) {
-                case Move::ROCK: winning_move = Move::PAPER; break;
-                case Move::PAPER: winning_move = Move::SCISSORS; break;
-                case Move::SCISSORS: winning_move = Move::ROCK; break;
+            // Take action in environment
+            auto [reward, done] = env.step(action);
+            episode_reward += reward;
+            
+            // Store transition
+            states.push_back(state);
+            actions.push_back(action);
+            rewards.push_back(reward);
+            values.push_back(value);
+            
+            // Visualize every 100 episodes
+            if (episode % 100 == 0) {
+                printGameState(env, agent);
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
             }
             
-            // Add the winning move as the target
-            training_targets.push_back(one_hot_encode(winning_move));
+            if (done) break;
+        }
+        
+        total_reward += episode_reward;
+        
+        // Update policy every episodes_per_update episodes
+        if ((episode + 1) % episodes_per_update == 0) {
+            agent.update(states, actions, rewards, values);
+            states.clear();
+            actions.clear();
+            rewards.clear();
+            values.clear();
             
-            // Train the network on the latest move
-            nn.train(training_inputs, training_targets, 0.01, 10);
-            
-            // Update game state for next round
-            game_state.segment(0, 3) = one_hot_encode(player_move);
-            game_state.segment(3, 3) = one_hot_encode(ai_last_move);
-            
-            // Get AI's move
-            Move ai_move = nn.predict(game_state);
-            ai_last_move = ai_move;
-            
-            std::cout << "AI plays: " << move_to_string(ai_move) << "\n";
-            
-            // Determine winner
-            if (ai_move == player_move) {
-                std::cout << "It's a tie!\n";
-            } else if ((ai_move == Move::ROCK && player_move == Move::SCISSORS) ||
-                      (ai_move == Move::PAPER && player_move == Move::ROCK) ||
-                      (ai_move == Move::SCISSORS && player_move == Move::PAPER)) {
-                std::cout << "AI wins!\n";
-            } else {
-                std::cout << "You win!\n";
-            }
-            
-        } catch (const std::invalid_argument& e) {
-            std::cout << "Invalid move! Please enter R, P, or S.\n";
+            float avg_reward = total_reward / episodes_per_update;
+            std::cout << "Episode " << episode + 1 << ", Average Reward: "
+                      << std::fixed << std::setprecision(3) << avg_reward << "\n";
+            total_reward = 0.0f;
         }
     }
     
-    std::cout << "Thanks for playing!\n";
+    std::cout << "\nTraining completed!\n";
+    
+    // Play a few games to demonstrate learned behavior
+    std::cout << "\nPlaying demonstration games...\n";
+    for (int i = 0; i < 3; i++) {
+        env.reset();
+        std::cout << "\nGame " << i + 1 << ":\n";
+        
+        while (true) {
+            Eigen::VectorXd state = env.getState();
+            std::vector<int> valid_actions = getValidActions(env);
+            
+            printGameState(env, agent);
+            
+            int action = agent.sampleAction(state, valid_actions);
+            auto [reward, done] = env.step(action);
+            
+            std::cout << "Agent played: " << Card(static_cast<CardType>(action)).getName()
+                      << ", Reward: " << reward << "\n";
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            
+            if (done) break;
+        }
+    }
+    
     return 0;
 } 

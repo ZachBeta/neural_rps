@@ -7,14 +7,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find required packages
 find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
+find_package(GTest REQUIRED)
 
 # Enable testing
 enable_testing()
-find_package(GTest REQUIRED)
 
 # Add include directory
 include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Add subdirectories
 add_subdirectory(src)
