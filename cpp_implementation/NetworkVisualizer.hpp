@@ -6,6 +6,8 @@
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Dense>
+#include <limits>
+#include <algorithm>
 
 class NetworkVisualizer {
 public:
@@ -32,6 +34,16 @@ public:
 
 private:
     static std::ofstream output_file_;
+    
+    // Safely compute softmax to avoid numerical issues
+    static Eigen::VectorXd softmax(const Eigen::VectorXd& x) {
+        Eigen::VectorXd result = x;
+        double max_val = result.maxCoeff();
+        result.array() -= max_val; // Subtract max for numerical stability
+        result = result.array().exp();
+        result /= result.sum();
+        return result;
+    }
 };
 
 // Static member initialization

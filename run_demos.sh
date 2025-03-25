@@ -8,6 +8,14 @@ echo "This script will run demos of all three implementations"
 echo "and generate output files for comparison."
 echo
 
+# Set up environment variables for C++ implementation
+export EIGEN_DIR="/opt/homebrew/include/eigen3"
+export CPLUS_INCLUDE_PATH="$EIGEN_DIR:$CPLUS_INCLUDE_PATH"
+export LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH"
+export LD_LIBRARY_PATH="/opt/homebrew/lib:$LD_LIBRARY_PATH"
+echo "C++ environment set up:"
+echo "EIGEN_DIR=$EIGEN_DIR"
+
 # Build all implementations
 echo "Building all implementations..."
 make build
@@ -18,9 +26,8 @@ echo "============================================="
 echo "Running C++ Neural RPS Demo"
 echo "============================================="
 echo "Output will be saved to cpp_demo_output.txt"
-echo "(This may fail if Eigen library is not installed)"
 echo
-cd cpp_implementation/build && ./neural_rps
+cd cpp_implementation/build && ./neural_rps || echo "C++ demo failed to run. Please check your environment."
 cd ../..
 
 # Go Demo
@@ -53,7 +60,7 @@ echo "All demos completed. Output files in project root:"
 if [ -f "cpp_demo_output.txt" ]; then
   echo "✅ cpp_demo_output.txt - C++ implementation output"
 else
-  echo "❌ cpp_demo_output.txt - NOT GENERATED (Eigen library missing?)"
+  echo "❌ cpp_demo_output.txt - NOT GENERATED (error during execution?)"
 fi
 
 if [ -f "go_demo_output.txt" ]; then

@@ -14,7 +14,7 @@ public:
                 const std::vector<int>& actions,
                 const std::vector<float>& rewards,
                 const std::vector<float>& values);
-    Eigen::VectorXd getPolicyProbs(const Eigen::VectorXd& state);
+    Eigen::VectorXd getPolicyProbs(const Eigen::VectorXd& state) const;
     Eigen::MatrixXd getPolicyWeights() const;
     
 private:
@@ -37,7 +37,7 @@ private:
     // Random number generator
     std::mt19937 rng_;
     
-    Eigen::VectorXd softmax(const Eigen::VectorXd& x);
+    Eigen::VectorXd softmax(const Eigen::VectorXd& x) const;
     Eigen::VectorXd computeReturns(const std::vector<float>& rewards);
     Eigen::VectorXd maskInvalidActions(const Eigen::VectorXd& probs, const std::vector<int>& valid_actions);
 };
@@ -90,8 +90,10 @@ inline void PPOAgent::update(const std::vector<Eigen::VectorXd>& states,
         Eigen::VectorXd grad = Eigen::VectorXd::Zero(action_dim_);
         grad(action) = advantages(i) / std::max(old_prob, 1e-8f);
         
-        // Clip gradient
-        grad(action) = std::min(std::max(grad(action), -clip_param_), clip_param_);
+        // Clip gradient - fix type mismatch by explicitly casting
+        float grad_val = static_cast<float>(grad(action));
+        float clipped_grad = std::min(std::max(grad_val, -clip_param_), clip_param_);
+        grad(action) = clipped_grad;
         
         // Apply gradient to update policy weights
         for (int a = 0; a < action_dim_; a++) {
@@ -104,7 +106,7 @@ inline void PPOAgent::update(const std::vector<Eigen::VectorXd>& states,
     }
 }
 
-inline Eigen::VectorXd PPOAgent::getPolicyProbs(const Eigen::VectorXd& state) {
+inline Eigen::VectorXd PPOAgent::getPolicyProbs(const Eigen::VectorXd& state) const {
     Eigen::VectorXd logits = policy_weights_ * state;
     return softmax(logits);
 }
@@ -113,8 +115,14 @@ inline Eigen::MatrixXd PPOAgent::getPolicyWeights() const {
     return policy_weights_;
 }
 
-inline Eigen::VectorXd PPOAgent::softmax(const Eigen::VectorXd& x) {
-    Eigen::VectorXd exp_x = x.array().exp();
+inline Eigen::VectorXd PPOAgent::softmax(const Eigen::VectorXd& x) const {
+    // Find the maximum value for numerical stability
+    double max_val = x.maxCoeff();
+    
+    // Subtract the maximum value and compute exp
+    Eigen::VectorXd exp_x = (x.array() - max_val).exp();
+    
+    // Normalize to get probabilities
     return exp_x / exp_x.sum();
 }
 

@@ -4,61 +4,61 @@ AlphaGo-style TicTacToe Demo
 Training networks through self-play...
 Playing game 1/5
   0 1 2
-0 . . .
-1 X . .
+0 . X .
+1 . . .
 2 . . .
 Current player: O
   0 1 2
-0 O . .
-1 X . .
+0 . X .
+1 O . .
 2 . . .
 Current player: X
   0 1 2
-0 O . .
-1 X . X
-2 . . .
+0 . X .
+1 O . .
+2 X . .
 Current player: O
   0 1 2
-0 O . .
-1 X . X
-2 . O .
-Current player: X
-  0 1 2
-0 O . .
-1 X . X
+0 . X .
+1 O . .
 2 X O .
+Current player: X
+  0 1 2
+0 . X .
+1 O . .
+2 X O X
 Current player: O
   0 1 2
-0 O . .
-1 X . X
-2 X O O
+0 O X .
+1 O . .
+2 X O X
 Current player: X
   0 1 2
 0 O X .
-1 X . X
-2 X O O
+1 O X .
+2 X O X
 Current player: O
   0 1 2
-0 O X O
-1 X . X
-2 X O O
+0 O X .
+1 O X O
+2 X O X
 Current player: X
   0 1 2
-0 O X O
-1 X X X
-2 X O O
+0 O X X
+1 O X O
+2 X O X
 Game over: X wins
 Generated 45 training examples from 5 games in 0.01 seconds
-Epoch 1/10 - Policy Loss: 2.2503, Value Loss: 0.1948
-Epoch 2/10 - Policy Loss: 2.2402, Value Loss: 0.1948
-Epoch 3/10 - Policy Loss: 2.2305, Value Loss: 0.1948
-Epoch 4/10 - Policy Loss: 2.2215, Value Loss: 0.1947
-Epoch 5/10 - Policy Loss: 2.2129, Value Loss: 0.1947
-Epoch 6/10 - Policy Loss: 2.2047, Value Loss: 0.1947
-Epoch 7/10 - Policy Loss: 2.1968, Value Loss: 0.1946
-Epoch 8/10 - Policy Loss: 2.1892, Value Loss: 0.1946
-Epoch 9/10 - Policy Loss: 2.1817, Value Loss: 0.1945
-Epoch 10/10 - Policy Loss: 2.1744, Value Loss: 0.1945
+Epoch 1/10 - Policy Loss: 2.2342, Value Loss: 0.2560
+Epoch 2/10 - Policy Loss: 2.2261, Value Loss: 0.2559
+Epoch 3/10 - Policy Loss: 2.2182, Value Loss: 0.2557
+Epoch 4/10 - Policy Loss: 2.2106, Value Loss: 0.2556
+Epoch 5/10 - Policy Loss: 2.2032, Value Loss: 0.2555
+Epoch 6/10 - Policy Loss: 2.1960, Value Loss: 0.2553
+Epoch 7/10 - Policy Loss: 2.1891, Value Loss: 0.2552
+Epoch 8/10 - Policy Loss: 2.1824, Value Loss: 0.2551
+Epoch 9/10 - Policy Loss: 2.1758, Value Loss: 0.2549
+Epoch 10/10 - Policy Loss: 2.1694, Value Loss: 0.2548
 Training completed in 0.00 seconds
 
 Running demo game with simulated player...
@@ -73,21 +73,21 @@ Current board:
 Current player: X
 Human player selects: 1,1
 Invalid move: not the player's turn
-Falling back to random move: 0,2
+Falling back to random move: 1,2
 
 Current board:
   0 1 2
-0 . . X
-1 . . .
+0 . . .
+1 . . X
 2 . . .
 Current player: O
 AI is thinking...
-AI played: 1,1
+AI played: 0,2
 
 Current board:
   0 1 2
-0 . . X
-1 . O .
+0 . . O
+1 . . X
 2 . . .
 Current player: X
 Human player selects: 0,0
@@ -96,62 +96,62 @@ Falling back to random move: 1,0
 
 Current board:
   0 1 2
-0 . . X
-1 X O .
+0 . . O
+1 X . X
 2 . . .
+Current player: O
+AI is thinking...
+AI played: 2,1
+
+Current board:
+  0 1 2
+0 . . O
+1 X . X
+2 . O .
+Current player: X
+Human player selects: 2,2
+Invalid move: not the player's turn
+Falling back to random move: 2,0
+
+Current board:
+  0 1 2
+0 . . O
+1 X . X
+2 X O .
+Current player: O
+AI is thinking...
+AI played: 2,2
+
+Current board:
+  0 1 2
+0 . . O
+1 X . X
+2 X O O
+Current player: X
+Human player selects: 0,1
+
+Current board:
+  0 1 2
+0 . X O
+1 X . X
+2 X O O
 Current player: O
 AI is thinking...
 AI played: 0,0
 
 Current board:
   0 1 2
-0 O . X
-1 X O .
-2 . . .
+0 O X O
+1 X . X
+2 X O O
 Current player: X
-Human player selects: 2,2
-Invalid move: not the player's turn
-Falling back to random move: 2,1
-
-Current board:
-  0 1 2
-0 O . X
-1 X O .
-2 . X .
-Current player: O
-AI is thinking...
-AI played: 1,2
-
-Current board:
-  0 1 2
-0 O . X
-1 X O O
-2 . X .
-Current player: X
-Human player selects: 2,0
-
-Current board:
-  0 1 2
-0 O . X
-1 X O O
-2 X X .
-Current player: O
-AI is thinking...
-AI played: 0,1
-
-Current board:
-  0 1 2
-0 O O X
-1 X O O
-2 X X .
-Current player: X
-Human player selects: 2,2
+Human player selects: 1,1
 
 Final board:
   0 1 2
-0 O O X
-1 X O O
-2 X X X
+0 O X O
+1 X X X
+2 X O O
 Game over: X wins
 Human player wins!
 
