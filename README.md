@@ -54,6 +54,39 @@ make run-alphago-rps
 make alphago-train       # Train AlphaGo RPS models
 make alphago-tournament  # Compare different AlphaGo models
 
+### Custom Training via CLI Flags
+
+You can run the trainer directly with custom hyperparameters:
+
+```bash
+cd alphago_demo
+go build -o bin/train_models cmd/train_models/main.go
+
+# Example: train a larger model with 256 hidden neurons,
+# 2000 self-play games, 20 epochs, 500 MCTS simulations,
+# exploration=1.2, 100 tournament games, on 16 threads:
+./bin/train_models --parallel --threads 16 \
+  --m2-hidden 256 --m2-games 2000 --m2-epochs 20 \
+  --m2-sims 500 --m2-exploration 1.2 \
+  --tournament-games 100
+```
+
+The available flags are:
+
+- `--m1-games` (default 100)
+- `--m1-epochs` (default 5)
+- `--m1-hidden` (default 64)
+- `--m1-sims` (default 300)
+- `--m1-exploration` (default 1.5)
+- `--m2-games` (default 1000)
+- `--m2-epochs` (default 10)
+- `--m2-hidden` (default 128)
+- `--m2-sims` (default 200)
+- `--m2-exploration` (default 1.0)
+- `--tournament-games` (default 30)
+- `--parallel` (enable parallel execution)
+- `--threads` (number of threads, default auto)
+
 # Golang-specific tasks
 make golang-tournament   # Run tournaments between agents
 make golang-vs-alphago   # Compare Golang and AlphaGo agents

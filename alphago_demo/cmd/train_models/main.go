@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
@@ -43,7 +44,43 @@ func main() {
 	parallel := flag.Bool("parallel", false, "Use parallel execution for training")
 	optimizeThreads := flag.Bool("optimize-threads", false, "Find optimal thread count for current hardware")
 	threads := flag.Int("threads", 0, "Specific number of threads to use (0 = auto)")
+	profile := flag.Bool("profile", false, "Enable CPU profiling")
+
+	// Model hyperparameter flags (defaults from constants)
+	m1Games := flag.Int("m1-games", model1SelfPlayGames, "Self-play games for Model 1")
+	m1Epochs := flag.Int("m1-epochs", model1Epochs, "Training epochs for Model 1")
+	m1Hidden := flag.Int("m1-hidden", model1HiddenSize, "Hidden neurons for Model 1")
+	m1Sims := flag.Int("m1-sims", mctsSimulations*3/2, "MCTS simulations for Model 1")
+	m1Exploration := flag.Float64("m1-exploration", 1.5, "Exploration constant for Model 1")
+
+	m2Games := flag.Int("m2-games", model2SelfPlayGames, "Self-play games for Model 2")
+	m2Epochs := flag.Int("m2-epochs", model2Epochs, "Training epochs for Model 2")
+	m2Hidden := flag.Int("m2-hidden", model2HiddenSize, "Hidden neurons for Model 2")
+	m2Sims := flag.Int("m2-sims", mctsSimulations, "MCTS simulations for Model 2")
+	m2Exploration := flag.Float64("m2-exploration", 1.0, "Exploration constant for Model 2")
+
+	tourGames := flag.Int("tournament-games", tournamentGames, "Number of head-to-head games")
 	flag.Parse()
+
+	// Setup CPU profiling if requested
+	if *profile {
+		// Ensure directory exists
+		os.MkdirAll("output/profiles", 0755)
+
+		// Create profile file
+		timestamp := time.Now().Format("20060102-150405")
+		profilePath := fmt.Sprintf("output/profiles/cpu_%s.prof", timestamp)
+		f, err := os.Create(profilePath)
+		if err != nil {
+			log.Fatalf("Could not create CPU profile: %v", err)
+		}
+
+		fmt.Printf("CPU profiling enabled. Profile will be written to %s\n", profilePath)
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatalf("Could not start CPU profile: %v", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 
 	// Handle thread optimization if requested
 	if *optimizeThreads {
@@ -51,20 +88,29 @@ func main() {
 		return
 	}
 
-	// Adjust parameters for small test runs
-	m1Games := model1SelfPlayGames
-	m1Epochs := model1Epochs
-	m2Games := model2SelfPlayGames
-	m2Epochs := model2Epochs
-	tGames := tournamentGames
+	// Read hyperparameters from flags
+	m1G := *m1Games
+	m1E := *m1Epochs
+	h1 := *m1Hidden
+	s1 := *m1Sims
+	x1 := *m1Exploration
 
+	m2G := *m2Games
+	m2E := *m2Epochs
+	h2 := *m2Hidden
+	s2 := *m2Sims
+	x2 := *m2Exploration
+
+	tG := *tourGames
+
+	// Handle small-run override
 	if *smallRun {
 		fmt.Println("Running in small test mode with reduced parameters")
-		m1Games = 10 // 10% of normal
-		m1Epochs = 3 // Fewer epochs
-		m2Games = 20 // 2% of normal
-		m2Epochs = 6 // Fewer epochs
-		tGames = 50  // More tournament games to get better statistical significance
+		m1G = 10
+		m1E = 3
+		m2G = 20
+		m2E = 6
+		tG = 50
 	}
 
 	if *parallel {
@@ -80,56 +126,55 @@ func main() {
 	// Initialize neural networks for model 1 (smaller network, fewer games)
 	fmt.Println("=== Training Model 1 (Small Network) ===")
 	policy1, value1 := trainModel("output/rps_policy1.model", "output/rps_value1.model",
-		m1Games, m1Epochs, model1HiddenSize, *parallel, *threads)
+		m1G, m1E, h1, *parallel, *threads)
 
 	// Initialize neural networks for model 2 (larger network, more games)
 	fmt.Println("\n=== Training Model 2 (Large Network) ===")
 	policy2, value2 := trainModel("output/rps_policy2.model", "output/rps_value2.model",
-		m2Games, m2Epochs, model2HiddenSize, *parallel, *threads)
+		m2G, m2E, h2, *parallel, *threads)
 
-	// Extract model names from saved paths for agent naming
 	model1Name := fmt.Sprintf("H%d-G%d-E%d-S%d-X%.1f",
-		model1HiddenSize, m1Games, m1Epochs, mctsSimulations*3/2, 1.5)
+		h1, m1G, m1E, s1, x1)
 
 	model2Name := fmt.Sprintf("H%d-G%d-E%d-S%d-X%.1f",
-		model2HiddenSize, m2Games, m2Epochs, mctsSimulations, 1.0)
+		h2, m2G, m2E, s2, x2)
 
 	// Create agents for tournament with different MCTS parameters
 	// Give the smaller model more simulations to compensate for less training
 	// Model 1: More search but less neural network knowledge (more exploration)
 	// Model 2: Less search but more neural network knowledge (more exploitation)
 	agent1 := NewCustomAlphaGoAgent(model1Name, policy1, value1,
-		mctsSimulations*3/2, 1.5) // 50% more simulations, higher exploration
+		s1, x1)
 
 	agent2 := NewCustomAlphaGoAgent(model2Name, policy2, value2,
-		mctsSimulations, 1.0) // Standard parameters
+		s2, x2)
 
 	// Display model comparison information
 	fmt.Println("\n=== Model Comparison ===")
 	fmt.Printf("Model 1: %s\n", agent1.Name())
-	fmt.Printf("  Self-play games: %d\n", m1Games)
-	fmt.Printf("  Training epochs: %d\n", m1Epochs)
-	fmt.Printf("  MCTS simulations: %d\n", mctsSimulations*3/2)
-	fmt.Printf("  Exploration constant: %.1f\n", 1.5)
+	fmt.Printf("  Self-play games: %d\n", m1G)
+	fmt.Printf("  Training epochs: %d\n", m1E)
+	fmt.Printf("  MCTS simulations: %d\n", s1)
+	fmt.Printf("  Exploration constant: %.1f\n", x1)
 	stats1Policy := neural.CalculatePolicyNetworkStats(policy1)
 	stats1Value := neural.CalculateValueNetworkStats(value1)
 	totalParams1 := stats1Policy.TotalParameters + stats1Value.TotalParameters
-	fmt.Printf("  Hidden size: %d neurons\n", model1HiddenSize)
+	fmt.Printf("  Hidden size: %d neurons\n", h1)
 	fmt.Printf("  Total parameters: %d\n", totalParams1)
 
 	fmt.Printf("\nModel 2: %s\n", agent2.Name())
-	fmt.Printf("  Self-play games: %d\n", m2Games)
-	fmt.Printf("  Training epochs: %d\n", m2Epochs)
-	fmt.Printf("  MCTS simulations: %d\n", mctsSimulations)
-	fmt.Printf("  Exploration constant: %.1f\n", 1.0)
+	fmt.Printf("  Self-play games: %d\n", m2G)
+	fmt.Printf("  Training epochs: %d\n", m2E)
+	fmt.Printf("  MCTS simulations: %d\n", s2)
+	fmt.Printf("  Exploration constant: %.1f\n", x2)
 	stats2Policy := neural.CalculatePolicyNetworkStats(policy2)
 	stats2Value := neural.CalculateValueNetworkStats(value2)
 	totalParams2 := stats2Policy.TotalParameters + stats2Value.TotalParameters
-	fmt.Printf("  Hidden size: %d neurons\n", model2HiddenSize)
+	fmt.Printf("  Hidden size: %d neurons\n", h2)
 	fmt.Printf("  Total parameters: %d\n", totalParams2)
 
 	paramRatio := float64(totalParams2) / float64(totalParams1)
-	gameRatio := float64(m2Games) / float64(m1Games)
+	gameRatio := float64(m2G) / float64(m1G)
 	fmt.Printf("\nModel 2 has %.1fx more parameters and %.1fx more training games than Model 1\n",
 		paramRatio, gameRatio)
 	fmt.Printf("Model 1 has %.1fx more MCTS simulations and %.1fx higher exploration constant than Model 2\n",
@@ -140,19 +185,19 @@ func main() {
 
 	// Run tournament
 	fmt.Println("\n=== Starting Tournament (Model 1 vs Model 2) ===")
-	model1Wins, model2Wins, draws := runTournament(agent1, agent2, tGames)
+	model1Wins, model2Wins, draws := runTournament(agent1, agent2, tG)
 
 	// Print results
 	fmt.Println("\n=== Tournament Results ===")
-	fmt.Printf("Games played: %d\n", tGames)
-	fmt.Printf("Model 1 (%s) wins: %d (%.1f%%)\n", agent1.Name(), model1Wins, float64(model1Wins)/float64(tGames)*100)
-	fmt.Printf("Model 2 (%s) wins: %d (%.1f%%)\n", agent2.Name(), model2Wins, float64(model2Wins)/float64(tGames)*100)
-	fmt.Printf("Draws: %d (%.1f%%)\n", draws, float64(draws)/float64(tGames)*100)
+	fmt.Printf("Games played: %d\n", tG)
+	fmt.Printf("Model 1 (%s) wins: %d (%.1f%%)\n", agent1.Name(), model1Wins, float64(model1Wins)/float64(tG)*100)
+	fmt.Printf("Model 2 (%s) wins: %d (%.1f%%)\n", agent2.Name(), model2Wins, float64(model2Wins)/float64(tG)*100)
+	fmt.Printf("Draws: %d (%.1f%%)\n", draws, float64(draws)/float64(tG)*100)
 
 	// Calculate statistical significance
 	winDiff := math.Abs(float64(model1Wins) - float64(model2Wins))
-	pValue := calculatePValue(model1Wins, model2Wins, tGames)
-	fmt.Printf("\nWin difference: %.1f%%\n", winDiff/float64(tGames)*100)
+	pValue := calculatePValue(model1Wins, model2Wins, tG)
+	fmt.Printf("\nWin difference: %.1f%%\n", winDiff/float64(tG)*100)
 	fmt.Printf("Statistical significance: p-value %.3f ", pValue)
 
 	if pValue < 0.05 {
