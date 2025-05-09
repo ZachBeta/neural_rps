@@ -335,3 +335,49 @@ func (n *RPSPolicyNetwork) LoadFromFile(filename string) error {
 func (n *RPSPolicyNetwork) GetHiddenSize() int {
 	return n.hiddenSize
 }
+
+// GetWeights returns flattened network weights (input->hidden, hidden->output)
+func (n *RPSPolicyNetwork) GetWeights() []float64 {
+	total := n.hiddenSize*n.inputSize + n.outputSize*n.hiddenSize
+	weights := make([]float64, total)
+	idx := 0
+	// input->hidden weights
+	for i := 0; i < n.hiddenSize; i++ {
+		for j := 0; j < n.inputSize; j++ {
+			weights[idx] = n.weightsInputHidden[i][j]
+			idx++
+		}
+	}
+	// hidden->output weights
+	for i := 0; i < n.outputSize; i++ {
+		for j := 0; j < n.hiddenSize; j++ {
+			weights[idx] = n.weightsHiddenOutput[i][j]
+			idx++
+		}
+	}
+	return weights
+}
+
+// SetWeights assigns flattened weight values into the policy network
+func (n *RPSPolicyNetwork) SetWeights(weights []float64) error {
+	expected := n.hiddenSize*n.inputSize + n.outputSize*n.hiddenSize
+	if len(weights) != expected {
+		return fmt.Errorf("policy weights length mismatch: expected %d, got %d", expected, len(weights))
+	}
+	idx := 0
+	// input->hidden
+	for i := 0; i < n.hiddenSize; i++ {
+		for j := 0; j < n.inputSize; j++ {
+			n.weightsInputHidden[i][j] = weights[idx]
+			idx++
+		}
+	}
+	// hidden->output
+	for i := 0; i < n.outputSize; i++ {
+		for j := 0; j < n.hiddenSize; j++ {
+			n.weightsHiddenOutput[i][j] = weights[idx]
+			idx++
+		}
+	}
+	return nil
+}

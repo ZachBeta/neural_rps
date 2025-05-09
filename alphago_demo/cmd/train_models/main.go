@@ -15,6 +15,7 @@ import (
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/mcts"
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/neural"
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/training"
+	"github.com/zachbeta/neural_rps/alphago_demo/pkg/training/neat"
 )
 
 const (
@@ -45,7 +46,17 @@ func main() {
 	optimizeThreads := flag.Bool("optimize-threads", false, "Find optimal thread count for current hardware")
 	threads := flag.Int("threads", 0, "Specific number of threads to use (0 = auto)")
 	profile := flag.Bool("profile", false, "Enable CPU profiling")
-
+	// Training method selection
+	method := flag.String("method", "alphago", "Training method: alphago | neat")
+	// NEAT-specific flags
+	popSize := flag.Int("pop-size", 150, "Population size for NEAT")
+	generations := flag.Int("generations", 30, "Number of NEAT generations")
+	mutRate := flag.Float64("mut-rate", 0.05, "Mutation rate for NEAT")
+	cxRate := flag.Float64("cx-rate", 0.8, "Crossover rate for NEAT")
+	compatThreshold := flag.Float64("compat-threshold", 3.0, "Speciation threshold for NEAT")
+	evalGames := flag.Int("eval-games", 10, "Self-play games per genome for NEAT evaluation")
+	weightStd := flag.Float64("weight-std", 0.1, "Weight mutation standard deviation for NEAT")
+	hiddenSize := flag.Int("hidden-size", model1HiddenSize, "Hidden neurons for NEAT networks")
 	// Model hyperparameter flags (defaults from constants)
 	m1Games := flag.Int("m1-games", model1SelfPlayGames, "Self-play games for Model 1")
 	m1Epochs := flag.Int("m1-epochs", model1Epochs, "Training epochs for Model 1")
@@ -85,6 +96,41 @@ func main() {
 	// Handle thread optimization if requested
 	if *optimizeThreads {
 		findOptimalThreadCount()
+		return
+	}
+
+	// NEAT training branch
+	if *method == "neat" {
+		fmt.Println("=== Training NEAT Model ===")
+		rand.Seed(time.Now().UnixNano())
+		// Ensure output directory exists
+		os.Mkdir("output", 0755)
+
+		// Configure and train NEAT
+		cfg := neat.Config{
+			PopSize:         *popSize,
+			Generations:     *generations,
+			MutRate:         *mutRate,
+			CxRate:          *cxRate,
+			CompatThreshold: *compatThreshold,
+			EvalGames:       *evalGames,
+			WeightStd:       *weightStd,
+			HiddenSize:      *hiddenSize,
+		}
+		policyNet, valueNet := neat.Train(cfg, *parallel, *threads)
+
+		// Save trained networks
+		timestamp := time.Now().Format("20060102-150405")
+		modelName := fmt.Sprintf("rps_neat_ps%d_g%d_%s", cfg.PopSize, cfg.Generations, timestamp)
+		policyPath := fmt.Sprintf("output/%s_policy.model", modelName)
+		valuePath := fmt.Sprintf("output/%s_value.model", modelName)
+		if err := policyNet.SaveToFile(policyPath); err != nil {
+			log.Fatalf("Failed to save NEAT policy network: %v", err)
+		}
+		if err := valueNet.SaveToFile(valuePath); err != nil {
+			log.Fatalf("Failed to save NEAT value network: %v", err)
+		}
+		fmt.Printf("Models saved to %s and %s\n", policyPath, valuePath)
 		return
 	}
 
