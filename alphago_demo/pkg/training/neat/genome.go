@@ -2,9 +2,10 @@ package neat
 
 import (
 	"fmt"
-	"github.com/zachbeta/neural_rps/alphago_demo/pkg/neural"
 	"math"
 	"math/rand"
+
+	"github.com/zachbeta/neural_rps/alphago_demo/pkg/neural"
 )
 
 // Genome represents a candidate solution with policy and value network weights.
@@ -104,4 +105,21 @@ func (g *Genome) ToNetworks() (*neural.RPSPolicyNetwork, *neural.RPSValueNetwork
 		panic(fmt.Sprintf("failed to set value weights: %v", err))
 	}
 	return pNet, vNet
+}
+
+// Copy creates a deep copy of the genome
+func (g *Genome) Copy() *Genome {
+	// Create new genome with same weights
+	newGenome := &Genome{
+		HiddenSize:    g.HiddenSize,
+		Fitness:       g.Fitness,
+		PolicyWeights: make([]float64, len(g.PolicyWeights)),
+		ValueWeights:  make([]float64, len(g.ValueWeights)),
+	}
+
+	// Copy weights
+	copy(newGenome.PolicyWeights, g.PolicyWeights)
+	copy(newGenome.ValueWeights, g.ValueWeights)
+
+	return newGenome
 }

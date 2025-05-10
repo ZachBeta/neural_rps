@@ -2,14 +2,19 @@ package neat
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
+	"sort"
+	"time"
+
+	"github.com/zachbeta/neural_rps/alphago_demo/pkg/neural"
 )
 
 // Population manages a NEAT population over generations.
 type Population struct {
-	Genomes      []*Genome        // all genomes in current generation
-	Species      map[int][]int    // species ID -> indices of genomes
-	innovCounter int              // global innovation counter for new genes (if using dynamic topology)
+	Genomes      []*Genome     // all genomes in current generation
+	Species      map[int][]int // species ID -> indices of genomes
+	innovCounter int           // global innovation counter for new genes (if using dynamic topology)
 }
 
 // NewPopulation creates an initial population of random genomes.
@@ -28,11 +33,64 @@ func NewPopulation(cfg Config) *Population {
 // Evolve runs the NEAT algorithm for the configured number of generations
 // and returns the best genome found.
 func (p *Population) Evolve(cfg Config, threads int) *Genome {
+	fmt.Printf("\n=== Starting NEAT evolution with %d genomes, %d generations ===\n",
+		len(p.Genomes), cfg.Generations)
+
+	// Display network architecture information
+	fmt.Println("\n=== Network Architecture ===")
+	// Create example networks to analyze structure
+	exampleGenome := p.Genomes[0]
+	policyNet, valueNet := exampleGenome.ToNetworks()
+
+	// Get network structure details using the network stats functions
+	policyStats := neural.CalculatePolicyNetworkStats(policyNet)
+	valueStats := neural.CalculateValueNetworkStats(valueNet)
+
+	// Display structure
+	fmt.Printf("Policy Network: %d inputs, %d hidden neurons, %d outputs\n",
+		policyStats.InputSize, policyStats.HiddenSize, policyStats.OutputSize)
+	fmt.Printf("Value Network: %d inputs, %d hidden neurons, %d outputs\n",
+		valueStats.InputSize, valueStats.HiddenSize, valueStats.OutputSize)
+
+	// Calculate parameters
+	totalParams := policyStats.TotalParameters + valueStats.TotalParameters
+
+	fmt.Printf("Total parameters: %d (%d policy, %d value)\n",
+		totalParams, policyStats.TotalParameters, valueStats.TotalParameters)
+
+	// Display weight initialization statistics
+	policyWeightStats := analyzeWeights(exampleGenome.PolicyWeights)
+	valueWeightStats := analyzeWeights(exampleGenome.ValueWeights)
+
+	fmt.Printf("Policy weights: min=%.4f, max=%.4f, mean=%.4f, std=%.4f\n",
+		policyWeightStats.min, policyWeightStats.max,
+		policyWeightStats.mean, policyWeightStats.std)
+	fmt.Printf("Value weights: min=%.4f, max=%.4f, mean=%.4f, std=%.4f\n",
+		valueWeightStats.min, valueWeightStats.max,
+		valueWeightStats.mean, valueWeightStats.std)
+
+	startTime := time.Now()
+	var bestGenome *Genome
+	var bestFitness float64
+
 	for gen := 1; gen <= cfg.Generations; gen++ {
-		// Evaluate all genomes
-		for _, g := range p.Genomes {
-			g.Fitness = Evaluate(g, cfg.EvalGames, threads)
+		genStartTime := time.Now()
+		fmt.Printf("\n--- Generation %d/%d ---\n", gen, cfg.Generations)
+
+		// Parallel evaluation: assign fitness to all genomes
+		var hof []*Genome // Hall-of-Fame (empty for now)
+		results := parallelEvaluate(p, hof)
+
+		// Update fitness values
+		for i, res := range results {
+			g := p.Genomes[i]
+			if res.Games > 0 {
+				g.Fitness = (float64(res.Wins) + 0.5*float64(res.Draws)) / float64(res.Games)
+			} else {
+				g.Fitness = 0
+			}
 		}
+
 		// Speciation
 		p.Species = make(map[int][]int)
 		for i, g := range p.Genomes {
@@ -49,17 +107,55 @@ func (p *Population) Evolve(cfg Config, threads int) *Genome {
 				p.Species[i] = []int{i}
 			}
 		}
-		// Log generation stats
-		var sumFit float64
-		bestFit := p.Genomes[0].Fitness
-		for _, g := range p.Genomes {
-			sumFit += g.Fitness
-			if g.Fitness > bestFit {
-				bestFit = g.Fitness
+
+		// Calculate statistics for this generation
+		best, sum, fitnessValues := 0.0, 0.0, make([]float64, len(p.Genomes))
+		bestIdx := 0
+		for i, g := range p.Genomes {
+			fitnessValues[i] = g.Fitness
+			sum += g.Fitness
+			if g.Fitness > best {
+				best = g.Fitness
+				bestIdx = i
 			}
 		}
-		avgFit := sumFit / float64(len(p.Genomes))
-		fmt.Printf("NEAT Generation %d/%d — best=%.4f, avg=%.4f, species=%d\n", gen, cfg.Generations, bestFit, avgFit, len(p.Species))
+		avg := sum / float64(len(p.Genomes))
+
+		// Sort fitness values for distribution analysis
+		sort.Float64s(fitnessValues)
+		median := fitnessValues[len(fitnessValues)/2]
+		q1 := fitnessValues[len(fitnessValues)/4]
+		q3 := fitnessValues[3*len(fitnessValues)/4]
+
+		// Print generation summary
+		genTime := time.Since(genStartTime)
+		fmt.Printf("NEAT Generation %d/%d — best=%.4f, avg=%.4f, median=%.4f\n",
+			gen, cfg.Generations, best, avg, median)
+		fmt.Printf("Fitness distribution: min=%.4f, q1=%.4f, median=%.4f, q3=%.4f, max=%.4f\n",
+			fitnessValues[0], q1, median, q3, fitnessValues[len(fitnessValues)-1])
+		fmt.Printf("Species: %d | Generation time: %s\n", len(p.Species), genTime)
+
+		// Print species information
+		fmt.Printf("Species distribution:\n")
+		speciesFitness := make(map[int]float64)
+		for speciesID, members := range p.Species {
+			speciesSum := 0.0
+			for _, memberIdx := range members {
+				speciesSum += p.Genomes[memberIdx].Fitness
+			}
+			speciesAvg := speciesSum / float64(len(members))
+			speciesFitness[speciesID] = speciesAvg
+			fmt.Printf("  Species %d: %d members, avg fitness=%.4f\n",
+				speciesID, len(members), speciesAvg)
+		}
+
+		// Track best genome over all generations
+		if gen == 1 || best > bestFitness {
+			bestFitness = best
+			bestGenome = p.Genomes[bestIdx].Copy()
+			fmt.Printf("New best genome found: fitness=%.4f\n", bestFitness)
+		}
+
 		// Reproduction
 		newGen := make([]*Genome, len(p.Genomes))
 		// Preserve best
@@ -100,6 +196,53 @@ func (p *Population) Evolve(cfg Config, threads int) *Genome {
 		}
 		p.Genomes = newGen
 	}
-	// Return best from final generation
-	return p.Genomes[0]
+
+	totalTime := time.Since(startTime)
+	fmt.Printf("\n=== Evolution complete ===\n")
+	fmt.Printf("Total time: %s, generations: %d\n", totalTime, cfg.Generations)
+	fmt.Printf("Best fitness achieved: %.4f\n", bestFitness)
+
+	return bestGenome
+}
+
+// weightStats holds basic statistics about a weight array
+type weightStats struct {
+	min, max, mean, std float64
+}
+
+// analyzeWeights computes min, max, mean, and std of weights
+func analyzeWeights(weights []float64) weightStats {
+	if len(weights) == 0 {
+		return weightStats{}
+	}
+
+	min, max := weights[0], weights[0]
+	sum := 0.0
+
+	for _, w := range weights {
+		if w < min {
+			min = w
+		}
+		if w > max {
+			max = w
+		}
+		sum += w
+	}
+
+	mean := sum / float64(len(weights))
+
+	// Calculate standard deviation
+	variance := 0.0
+	for _, w := range weights {
+		variance += (w - mean) * (w - mean)
+	}
+	variance /= float64(len(weights))
+	std := math.Sqrt(variance)
+
+	return weightStats{
+		min:  min,
+		max:  max,
+		mean: mean,
+		std:  std,
+	}
 }
