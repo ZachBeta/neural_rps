@@ -479,3 +479,19 @@ func (g *RPSGame) SetCurrentPlayer(playerVal int) {
 func (g *RPSGame) SetRound(round int) {
 	g.Round = round
 }
+
+// CountPlayerCards counts the number of cards owned by the specified player on the board
+func (g *RPSGame) CountPlayerCards(player RPSPlayer) int {
+	count := 0
+	for _, card := range g.Board {
+		if card.Owner == player {
+			count++
+		}
+	}
+	return count
+}
+
+// GetBoard returns the game board
+func (g *RPSGame) GetBoard() [9]RPSCard {
+	return g.Board
+}

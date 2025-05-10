@@ -3,6 +3,7 @@ package neural
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 )
@@ -150,4 +151,19 @@ func clipGradient(gradient float64, threshold float64) float64 {
 // CheckForNaN returns true if the value is NaN or Infinity
 func CheckForNaN(value float64) bool {
 	return math.IsNaN(value) || math.IsInf(value, 0)
+}
+
+// PolicyNetwork is an interface that can be implemented by different policy network types
+type PolicyNetwork interface {
+	Predict(features []float64) []float64
+}
+
+// LoadPolicyNetwork loads a policy network from a file
+func LoadPolicyNetwork(filename string) (*RPSPolicyNetwork, error) {
+	network := &RPSPolicyNetwork{}
+	err := network.LoadFromFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load policy network: %v", err)
+	}
+	return network, nil
 }
