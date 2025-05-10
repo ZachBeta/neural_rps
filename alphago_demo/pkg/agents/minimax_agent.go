@@ -18,6 +18,7 @@ type MinimaxAgent struct {
 	positionsEvaluated int
 	totalMoveTime      time.Duration
 	moveCount          int
+	verbose            bool
 }
 
 // NewMinimaxAgent creates a new minimax-based agent
@@ -44,12 +45,18 @@ func NewMinimaxAgent(name string, depth int, timeLimit time.Duration, useCache b
 		positionsEvaluated: 0,
 		totalMoveTime:      0,
 		moveCount:          0,
+		verbose:            false,
 	}
 }
 
 // Name returns the agent's name
 func (a *MinimaxAgent) Name() string {
 	return a.name
+}
+
+// SetVerbose enables or disables verbose logging
+func (a *MinimaxAgent) SetVerbose(verbose bool) {
+	a.verbose = verbose
 }
 
 // GetMove returns the best move according to minimax search
@@ -65,14 +72,16 @@ func (a *MinimaxAgent) GetMove(state *game.RPSGame) (game.RPSMove, error) {
 	a.moveCount++
 	a.positionsEvaluated += a.minimaxEngine.NodesEvaluated
 
-	// Log the move for analysis
-	if a.useCache {
-		hits, misses, hitRate := a.minimaxEngine.GetCacheStats()
-		fmt.Printf("Minimax move: %v, value: %.2f, time: %v, positions: %d, cache: %d hits, %d misses (%.1f%%)\n",
-			move, value, moveTime, a.minimaxEngine.NodesEvaluated, hits, misses, hitRate)
-	} else {
-		fmt.Printf("Minimax move: %v, value: %.2f, time: %v, positions: %d\n",
-			move, value, moveTime, a.minimaxEngine.NodesEvaluated)
+	// Log the move for analysis only if verbose mode is enabled
+	if a.verbose {
+		if a.useCache {
+			hits, misses, hitRate := a.minimaxEngine.GetCacheStats()
+			fmt.Printf("Minimax move: %v, value: %.2f, time: %v, positions: %d, cache: %d hits, %d misses (%.1f%%)\n",
+				move, value, moveTime, a.minimaxEngine.NodesEvaluated, hits, misses, hitRate)
+		} else {
+			fmt.Printf("Minimax move: %v, value: %.2f, time: %v, positions: %d\n",
+				move, value, moveTime, a.minimaxEngine.NodesEvaluated)
+		}
 	}
 
 	// Set player for the move

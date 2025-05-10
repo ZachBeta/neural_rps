@@ -47,8 +47,13 @@ func main() {
 	tm.AddAgent(NewRandomAgent("Random"))
 
 	// Add minimax agents with different depths
-	tm.AddAgent(NewMinimaxAgent("Minimax-3", 3, 1*time.Second, true))
-	tm.AddAgent(NewMinimaxAgent("Minimax-5", 5, 3*time.Second, true))
+	minimaxAgent3 := agents.NewMinimaxAgent("Minimax-3", 3, 1*time.Second, true)
+	minimaxAgent3.SetVerbose(*verbose)
+	tm.AddAgent(minimaxAgent3)
+
+	minimaxAgent5 := agents.NewMinimaxAgent("Minimax-5", 5, 3*time.Second, true)
+	minimaxAgent5.SetVerbose(*verbose)
+	tm.AddAgent(minimaxAgent5)
 
 	// Find available models for neural networks
 	fmt.Println("Looking for model files in output directory...")
