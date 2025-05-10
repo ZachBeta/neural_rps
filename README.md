@@ -54,6 +54,120 @@ make run-alphago-rps
 make alphago-train       # Train AlphaGo RPS models
 make alphago-tournament  # Compare different AlphaGo models
 
+# Golang-specific tasks
+make golang-tournament   # Run tournaments between agents
+make golang-vs-alphago   # Compare Golang and AlphaGo agents
+```
+
+### Tournament Systems
+
+The project includes several sophisticated tournament systems to evaluate and compare different AI agents:
+
+#### ELO Tournament System
+
+The ELO tournament system is the most comprehensive comparison tool, supporting all agent types:
+
+```bash
+cd alphago_demo
+go run cmd/elo_tournament/main.go [options]
+```
+
+Options:
+- `-games <n>`: Number of games per agent pair (default: 100)
+- `-verbose`: Enable detailed output for each game
+- `-cutoff <n>`: ELO threshold to prune underperforming agents (default: 1400)
+- `-output <file>`: Specify output file for results (default: output/tournament_results.csv)
+- `-top <n>`: Only use top N agents from previous tournament results
+
+This tournament automatically discovers trained models in the output directory and creates a full round-robin tournament with ELO ratings for all agents.
+
+#### Minimax Comparison Tournament
+
+To evaluate neural networks against traditional minimax search algorithms:
+
+```bash
+cd alphago_demo
+go run cmd/tournament_with_minimax/main.go [options]
+```
+
+Options:
+- `-games <n>`: Number of games per agent pair (default: 30)
+- `-verbose`: Show detailed output for each move
+- `-output <file>`: Output file location (default: output/tournament_with_minimax_results.csv)
+- `-max-networks <n>`: Limit number of neural networks of each type (default: 3)
+
+This tournament includes minimax agents at different search depths and compares them against the neural network approaches.
+
+### Training Entry Points
+
+The project includes several specialized training entry points for different neural network approaches:
+
+#### AlphaGo-Style Model Training
+
+The primary training entry point for AlphaGo-style models with MCTS:
+
+```bash
+cd alphago_demo
+go run cmd/train_models/main.go [options]
+```
+
+This comprehensive trainer offers:
+- Self-play training with MCTS
+- Parallel execution support
+- Comparison of different network sizes
+- Tournament evaluation
+
+It supports two training methods:
+- **AlphaGo**: Neural networks with MCTS (default)
+- **NEAT**: Neuroevolution of Augmenting Topologies
+
+#### Extended Training for Top Agents
+
+For continuing training of pre-trained models:
+
+```bash
+cd alphago_demo
+go run cmd/train_top_agents/main.go [options]
+```
+
+Options:
+- `-games <n>`: Self-play games for training (default: 2000)
+- `-sims <n>`: MCTS simulations per move (default: 400)
+- `-tournament-only`: Skip training and run tournament only
+- `-training-only`: Skip tournament and do training only
+- `-output <dir>`: Directory for output files (default: output/extended_training)
+
+#### Supervised Learning from Expert Data
+
+For training models on existing expert gameplay data:
+
+```bash
+cd alphago_demo
+go run cmd/train_supervised/main.go [options]
+```
+
+Options:
+- `-hidden <n>`: Hidden layer size (default: 128)
+- `-lr <n>`: Learning rate (default: 0.001)
+- `-batch <n>`: Batch size (default: 32)
+- `-epochs <n>`: Maximum epochs (default: 100)
+- `-patience <n>`: Early stopping patience (default: 10)
+
+#### Training Data Generation
+
+Generate expert gameplay data using minimax search:
+
+```bash
+cd alphago_demo
+go run cmd/generate_training_data/main.go [options]
+```
+
+Options:
+- `-positions <n>`: Number of positions to generate (default: 10000)
+- `-depth <n>`: Minimax search depth (default: 5)
+- `-time-limit <dur>`: Time limit per move (default: 5s)
+- `-output <file>`: Output file path (default: training_data.json)
+
 ### Custom Training via CLI Flags
 
 You can run the trainer directly with custom hyperparameters:
@@ -86,11 +200,6 @@ The available flags are:
 - `--tournament-games` (default 30)
 - `--parallel` (enable parallel execution)
 - `--threads` (number of threads, default auto)
-
-# Golang-specific tasks
-make golang-tournament   # Run tournaments between agents
-make golang-vs-alphago   # Compare Golang and AlphaGo agents
-```
 
 ## Features
 

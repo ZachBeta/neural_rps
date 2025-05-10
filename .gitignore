@@ -80,3 +80,26 @@ go.work
 bin/
 # output/ - we want to track output files
 *.log
+
+# Ignore experimental neural network from scratch implementation
+neural_from_scratch/
+
+# Ignore refactoring wip for tournament
+tournament_refactor/
+
+# Tournament results (to avoid committing large auto-generated files)
+alphago_demo/output/tournament_results.csv
+alphago_demo/output/tournament_with_minimax_results.csv
+
+# Ignore generated binary files
+alphago_demo/train_models
+alphago_demo/rps_card
+alphago_demo/tictactoe
+
+# Generated data and model files
+alphago_demo/data/*.json
+alphago_demo/models/*.model
+alphago_demo/models/*.json
+
+# Tournament result files
+alphago_demo/results/tournament_*.txt
