@@ -1,4 +1,8 @@
 # TODO
+* clean up gomodules so it's easier to interact with - probably a module for running the training neat/mcts, and for tournament with minimax against all 
+
+
+# idk
 * tracking progress
 we might need to timestamp the models rather than rps_policy1.model and rps_value1.model
 

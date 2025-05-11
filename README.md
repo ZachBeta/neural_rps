@@ -198,8 +198,98 @@ The available flags are:
 - `--m2-sims` (default 200)
 - `--m2-exploration` (default 1.0)
 - `--tournament-games` (default 30)
-- `--parallel` (enable parallel execution)
-- `--threads` (number of threads, default auto)
+
+## GPU Acceleration
+
+This project now supports GPU acceleration through TensorFlow for significantly improved performance in neural network inference and training.
+
+### Requirements
+
+- Go 1.20 or later
+- TensorFlow Go bindings (for GPU mode)
+- Metal Performance Shaders (MPS) support on Apple Silicon macs
+
+### Installation of TensorFlow Dependencies
+
+To use GPU acceleration, you need to install TensorFlow and its Go bindings:
+
+#### macOS with Apple Silicon (M1/M2/M3)
+
+```bash
+# Install TensorFlow dependencies
+brew install tensorflow
+
+# Set environment variables
+export LIBRARY_PATH=$LIBRARY_PATH:/opt/homebrew/lib
+export CPATH=$CPATH:/opt/homebrew/include
+
+# Install TensorFlow Go bindings
+go get github.com/tensorflow/tensorflow/tensorflow/go@v2.15.0
+```
+
+#### Linux with NVIDIA GPU
+
+```bash
+# Install CUDA and cuDNN according to TensorFlow documentation
+# https://www.tensorflow.org/install/gpu
+
+# Install TensorFlow C library
+wget https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-2.15.0.tar.gz
+sudo tar -C /usr/local -xzf libtensorflow-cpu-linux-x86_64-2.15.0.tar.gz
+sudo ldconfig
+
+# Install TensorFlow Go bindings
+go get github.com/tensorflow/tensorflow/tensorflow/go@v2.15.0
+```
+
+### Building with GPU Support
+
+You can build any component with GPU support using the build script:
+
+```bash
+# Build with CPU-only support
+./scripts/build.sh
+
+# Build with GPU acceleration
+./scripts/build.sh --gpu
+```
+
+Or manually using build tags:
+
+```bash
+go build -tags=gpu -o bin/benchmark cmd/benchmark/main.go
+```
+
+### Benchmarking CPU vs. GPU Performance
+
+To compare CPU and GPU performance:
+
+```bash
+# Run CPU benchmark
+./bin/benchmark
+
+# Run GPU benchmark (if built with GPU support)
+./bin/benchmark --gpu --batch 128 --samples 50000
+```
+
+The benchmark will show inference speed and performance metrics for both modes.
+
+### Batched Operations
+
+The GPU implementation supports batched operations for increased throughput:
+
+1. **Neural Network Inference**: The `BatchedNeuralNetwork` interface allows processing multiple inputs in a single forward pass.
+2. **MCTS Search**: The batched MCTS implementation collects multiple positions to evaluate in a single GPU call.
+
+### Architecture
+
+The GPU acceleration architecture follows these principles:
+
+1. **Clean Separation**: GPU and CPU implementations use separate packages with build tags
+2. **Shared Interfaces**: Common interfaces ensure compatibility between implementations
+3. **Conditional Compilation**: GPU features are only included when using the `gpu` build tag
+4. **Memory Optimization**: Tensor pooling reduces memory allocations
+5. **Optional Dependencies**: TensorFlow is an optional dependency only needed for GPU builds
 
 ## Features
 
