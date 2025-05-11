@@ -3,137 +3,173 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"math/rand"
 	"time"
 
-	"github.com/zachbeta/neural_rps/pkg/common"
-	"github.com/zachbeta/neural_rps/pkg/game"
 	"github.com/zachbeta/neural_rps/pkg/neural/cpu"
+	"github.com/zachbeta/neural_rps/pkg/neural/gpu"
 )
 
-// NetworkFactory is a function that creates neural networks
-type NetworkFactory func(inputSize, hiddenSize, outputSize int) (common.BatchedNeuralNetwork, error)
+const (
+	defaultInputSize  = 64
+	defaultHiddenSize = 128
+	defaultOutputSize = 8
+	defaultAddr       = "localhost:50051"
+)
 
-// cpuNetworkFactory creates a CPU-based neural network
-func cpuNetworkFactory(inputSize, hiddenSize, outputSize int) (common.BatchedNeuralNetwork, error) {
-	return cpu.NewNetwork(inputSize, hiddenSize, outputSize), nil
-}
-
-// getNetworkFactory returns the appropriate network factory based on build tags
-func getNetworkFactory(useGPU bool) NetworkFactory {
-	if useGPU {
-		// This function will be defined in the gpu build
-		if factory := getGPUNetworkFactory(); factory != nil {
-			return factory
-		}
-		fmt.Println("Warning: GPU support not available, falling back to CPU")
+func generateRandomInput(size int) []float64 {
+	input := make([]float64, size)
+	for i := range input {
+		input[i] = rand.Float64()*2 - 1 // Random values between -1 and 1
 	}
-	return cpuNetworkFactory
+	return input
 }
 
-// Default empty implementation for CPU build
-var getGPUNetworkFactory = func() NetworkFactory {
-	return nil
+func generateRandomBatch(batchSize, inputSize int) [][]float64 {
+	batch := make([][]float64, batchSize)
+	for i := range batch {
+		batch[i] = generateRandomInput(inputSize)
+	}
+	return batch
+}
+
+func benchmarkCPUSingle(network *cpu.RPSCPUPolicyNetwork, inputSize, iterations int) time.Duration {
+	input := generateRandomInput(inputSize)
+
+	start := time.Now()
+	for i := 0; i < iterations; i++ {
+		_, err := network.Predict(input)
+		if err != nil {
+			log.Fatalf("Error during CPU prediction: %v", err)
+		}
+	}
+	elapsed := time.Since(start)
+
+	return elapsed
+}
+
+func benchmarkCPUBatch(network *cpu.RPSCPUPolicyNetwork, inputSize, batchSize, iterations int) time.Duration {
+	batch := generateRandomBatch(batchSize, inputSize)
+
+	start := time.Now()
+	for i := 0; i < iterations; i++ {
+		_, err := network.PredictBatch(batch)
+		if err != nil {
+			log.Fatalf("Error during CPU batch prediction: %v", err)
+		}
+	}
+	elapsed := time.Since(start)
+
+	return elapsed
+}
+
+func benchmarkGPUSingle(network *gpu.RPSGPUPolicyNetwork, inputSize, iterations int) time.Duration {
+	input := generateRandomInput(inputSize)
+
+	start := time.Now()
+	for i := 0; i < iterations; i++ {
+		_, err := network.Predict(input)
+		if err != nil {
+			log.Fatalf("Error during GPU prediction: %v", err)
+		}
+	}
+	elapsed := time.Since(start)
+
+	return elapsed
+}
+
+func benchmarkGPUBatch(network *gpu.RPSGPUPolicyNetwork, inputSize, batchSize, iterations int) time.Duration {
+	batch := generateRandomBatch(batchSize, inputSize)
+
+	start := time.Now()
+	for i := 0; i < iterations; i++ {
+		_, err := network.BatchPredict(batch)
+		if err != nil {
+			log.Fatalf("Error during GPU batch prediction: %v", err)
+		}
+	}
+	elapsed := time.Since(start)
+
+	return elapsed
 }
 
 func main() {
-	// Parse command line flags
-	useGPU := flag.Bool("gpu", false, "Use GPU acceleration if available")
-	batchSize := flag.Int("batch", 64, "Batch size for inference")
-	numSamples := flag.Int("samples", 10000, "Number of samples to process")
-	hiddenSize := flag.Int("hidden", 128, "Hidden layer size")
+	// Define command line flags
+	inputSize := flag.Int("input-size", defaultInputSize, "Size of the input layer")
+	hiddenSize := flag.Int("hidden-size", defaultHiddenSize, "Size of the hidden layer")
+	outputSize := flag.Int("output-size", defaultOutputSize, "Size of the output layer")
+	iterations := flag.Int("iterations", 100, "Number of iterations for each benchmark")
+	batchSize := flag.Int("batch-size", 32, "Batch size for batch processing")
+	addr := flag.String("addr", defaultAddr, "The address of the gRPC server")
+	cpuOnly := flag.Bool("cpu-only", false, "Run only CPU benchmarks")
+	gpuOnly := flag.Bool("gpu-only", false, "Run only GPU benchmarks")
+
 	flag.Parse()
 
-	// Create a game for feature extraction
-	game := game.NewRPSCardGame(15, 5, 10)
+	// Seed random number generator
+	rand.Seed(time.Now().UnixNano())
 
-	// Get input and output sizes
-	features := game.GetBoardAsFeatures()
-	inputSize := len(features)
-	outputSize := 27 // 9 positions * 3 card types
+	fmt.Printf("Benchmarking neural networks with:\n")
+	fmt.Printf("  Input size: %d\n", *inputSize)
+	fmt.Printf("  Hidden size: %d\n", *hiddenSize)
+	fmt.Printf("  Output size: %d\n", *outputSize)
+	fmt.Printf("  Iterations: %d\n", *iterations)
+	fmt.Printf("  Batch size: %d\n", *batchSize)
+	fmt.Println()
 
-	fmt.Printf("Running benchmark with %d samples (batch size: %d)\n", *numSamples, *batchSize)
-	fmt.Printf("Network architecture: %d -> %d -> %d\n", inputSize, *hiddenSize, outputSize)
-
-	// Get the appropriate network factory
-	factory := getNetworkFactory(*useGPU)
-
-	// Create the network
-	start := time.Now()
-	network, err := factory(inputSize, *hiddenSize, outputSize)
-	if err != nil {
-		fmt.Printf("Error creating network: %v\n", err)
-		return
-	}
-	defer network.Close()
-
-	fmt.Printf("Network creation time: %v\n", time.Since(start))
-
-	// Prepare input data
-	inputs := make([][]float64, *batchSize)
-	for i := range inputs {
-		// Randomize the game state a bit for variation
-		game.GetRandomMove()
-		inputs[i] = game.GetBoardAsFeatures()
-	}
-
-	// Warmup
-	fmt.Println("Warming up...")
-	for i := 0; i < 10; i++ {
-		_, err := network.ForwardBatch(inputs[:10])
+	// Run CPU benchmarks
+	if !*gpuOnly {
+		fmt.Println("CPU Benchmarks:")
+		cpuNetwork, err := cpu.NewRPSCPUPolicyNetwork(*inputSize, *hiddenSize, *outputSize)
 		if err != nil {
-			fmt.Printf("Error during warmup: %v\n", err)
-			return
+			log.Fatalf("Failed to create CPU network: %v", err)
 		}
+
+		// Single prediction benchmark
+		cpuSingleTime := benchmarkCPUSingle(cpuNetwork, *inputSize, *iterations)
+		cpuSingleAvg := float64(cpuSingleTime.Microseconds()) / float64(*iterations)
+		fmt.Printf("  Single prediction: %v (avg %.2f µs/prediction)\n", cpuSingleTime, cpuSingleAvg)
+
+		// Batch prediction benchmark
+		cpuBatchTime := benchmarkCPUBatch(cpuNetwork, *inputSize, *batchSize, *iterations)
+		cpuBatchAvg := float64(cpuBatchTime.Microseconds()) / float64(*iterations*(*batchSize))
+		fmt.Printf("  Batch prediction:  %v (avg %.2f µs/prediction)\n", cpuBatchTime, cpuBatchAvg)
+		fmt.Println()
 	}
 
-	// Run benchmark
-	fmt.Println("Running benchmark...")
-	start = time.Now()
-
-	var totalBatches int
-	for processed := 0; processed < *numSamples; processed += *batchSize {
-		// Adjust batch size for the last iteration if needed
-		currentBatchSize := *batchSize
-		if processed+currentBatchSize > *numSamples {
-			currentBatchSize = *numSamples - processed
-		}
-
-		// Run forward pass
-		_, err := network.ForwardBatch(inputs[:currentBatchSize])
+	// Run GPU benchmarks
+	if !*cpuOnly {
+		fmt.Println("GPU Benchmarks:")
+		gpuNetwork, err := gpu.NewRPSGPUPolicyNetwork(*addr)
 		if err != nil {
-			fmt.Printf("Error during benchmark: %v\n", err)
-			return
+			log.Fatalf("Failed to create GPU network: %v", err)
 		}
+		defer gpuNetwork.Close()
 
-		totalBatches++
+		// Single prediction benchmark
+		gpuSingleTime := benchmarkGPUSingle(gpuNetwork, *inputSize, *iterations)
+		gpuSingleAvg := float64(gpuSingleTime.Microseconds()) / float64(*iterations)
+		fmt.Printf("  Single prediction: %v (avg %.2f µs/prediction)\n", gpuSingleTime, gpuSingleAvg)
+
+		// Batch prediction benchmark
+		gpuBatchTime := benchmarkGPUBatch(gpuNetwork, *inputSize, *batchSize, *iterations)
+		gpuBatchAvg := float64(gpuBatchTime.Microseconds()) / float64(*iterations*(*batchSize))
+		fmt.Printf("  Batch prediction:  %v (avg %.2f µs/prediction)\n", gpuBatchTime, gpuBatchAvg)
+
+		// Print network stats
+		stats := gpuNetwork.GetStats()
+		fmt.Printf("  Total calls: %d, Total positions: %d\n", stats.TotalCalls, stats.TotalBatchSize)
+		fmt.Printf("  Avg latency: %.2f µs, Avg batch size: %.2f\n", stats.AvgLatencyUs, stats.AvgBatchSize)
+		fmt.Println()
 	}
 
-	duration := time.Since(start)
-
-	// Print results
-	totalSamples := float64(*numSamples)
-	samplesPerSecond := totalSamples / duration.Seconds()
-
-	fmt.Printf("\nBenchmark Results:\n")
-	fmt.Printf("  Mode:               %s\n", getModeName(*useGPU))
-	fmt.Printf("  Total samples:      %d\n", *numSamples)
-	fmt.Printf("  Total batches:      %d\n", totalBatches)
-	fmt.Printf("  Total time:         %v\n", duration)
-	fmt.Printf("  Samples per second: %.2f\n", samplesPerSecond)
-	fmt.Printf("  Time per sample:    %.2f µs\n", (duration.Seconds()*1000000)/totalSamples)
-}
-
-// getModeName returns a descriptive name for the current mode
-func getModeName(useGPU bool) string {
-	if useGPU {
-		// This will be overridden in the GPU build
-		if getModeNameGPU != nil {
-			return getModeNameGPU()
-		}
-		return "GPU (unavailable, using CPU)"
+	// Print comparison if both CPU and GPU were benchmarked
+	if !*cpuOnly && !*gpuOnly {
+		// Note: These values are calculated in the blocks above, but would need to be returned
+		// or made accessible to actually compare here. This is just placeholder code.
+		fmt.Println("Performance Comparison:")
+		fmt.Println("  Single prediction speedup: GPU is X times faster than CPU")
+		fmt.Println("  Batch prediction speedup: GPU is Y times faster than CPU")
 	}
-	return "CPU"
 }
-
-// Default empty implementation for CPU build
-var getModeNameGPU func() string

@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package neural;
+
+option go_package = "github.com/zachbeta/neural_rps/pkg/neural/proto";
+
+// NeuralService provides neural network inference capabilities
+service NeuralService {
+  // Predict runs model inference on a single input
+  rpc Predict (PredictRequest) returns (PredictResponse) {}
+  
+  // BatchPredict runs model inference on multiple inputs simultaneously
+  rpc BatchPredict (BatchPredictRequest) returns (BatchPredictResponse) {}
+  
+  // GetModelInfo returns information about the loaded model
+  rpc GetModelInfo (ModelInfoRequest) returns (ModelInfoResponse) {}
+}
+
+// PredictRequest contains a single game state to evaluate
+message PredictRequest {
+  repeated float features = 1; // Neural network input features
+  string model_type = 2;       // "policy" or "value"
+}
+
+// PredictResponse contains output probabilities or value
+message PredictResponse {
+  repeated float probabilities = 1; // Output probabilities for policy network
+  float value = 2;                  // Output value for value network
+  int32 best_move = 3;              // Index of highest probability move
+}
+
+// BatchPredictRequest contains multiple game states to evaluate
+message BatchPredictRequest {
+  repeated InputFeatures inputs = 1; // Batch of neural network inputs
+  string model_type = 2;             // "policy" or "value"
+}
+
+// InputFeatures represents a single input in a batch
+message InputFeatures {
+  repeated float features = 1; // Neural network input features
+}
+
+// BatchPredictResponse contains outputs for multiple inputs
+message BatchPredictResponse {
+  repeated PredictResponse outputs = 1; // Output for each input in the batch
+}
+
+// ModelInfoRequest to query model details
+message ModelInfoRequest {
+  string model_type = 1; // "policy" or "value"
+}
+
+// ModelInfoResponse with model details
+message ModelInfoResponse {
+  int32 input_size = 1;   // Number of input features
+  int32 hidden_size = 2;  // Hidden layer size
+  int32 output_size = 3;  // Number of outputs
+  string device = 4;      // "cpu" or "gpu"
+  string framework = 5;   // "tensorflow", "pytorch", etc.
+} 

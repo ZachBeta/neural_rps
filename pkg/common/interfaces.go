@@ -26,6 +26,21 @@ type BatchedNeuralNetwork interface {
 	PredictBatch(inputs [][]float64) ([]int, error)
 }
 
+// NetworkStats contains performance statistics for neural network execution
+type NetworkStats struct {
+	// TotalCalls is the number of network calls (single or batch)
+	TotalCalls int
+
+	// TotalBatchSize is the total number of positions evaluated
+	TotalBatchSize int
+
+	// AvgLatencyUs is the average latency per call in microseconds
+	AvgLatencyUs float64
+
+	// AvgBatchSize is the average batch size per call
+	AvgBatchSize float64
+}
+
 // Agent defines the interface for all game-playing agents
 type Agent interface {
 	// GetMove returns the best move for the current game state
