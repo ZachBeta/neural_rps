@@ -3,35 +3,12 @@ package mcts
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"sync"
 
 	"github.com/zachbeta/neural_rps/pkg/common"
 	"github.com/zachbeta/neural_rps/pkg/game"
 )
-
-// MCTSNode represents a node in the MCTS tree
-type MCTSNode struct {
-	state     *game.RPSCardGame
-	parent    *MCTSNode
-	children  []*MCTSNode
-	visits    int
-	value     float64 // Total value accumulated
-	priorProb float64 // Prior probability from policy network
-}
-
-// MCTSParams contains parameters for the MCTS algorithm
-type MCTSParams struct {
-	NumSimulations   int
-	ExplorationConst float64
-}
-
-// DefaultMCTSParams returns the default MCTS parameters
-func DefaultMCTSParams() MCTSParams {
-	return MCTSParams{
-		NumSimulations:   800,
-		ExplorationConst: 1.0,
-	}
-}
 
 // BatchedMCTS implements Monte Carlo Tree Search with batched neural network evaluations
 type BatchedMCTS struct {
@@ -60,14 +37,14 @@ func NewBatchedMCTS(policyNet, valueNet common.BatchedNeuralNetwork, params MCTS
 }
 
 // SetRootState sets the root state for the search
-func (mcts *BatchedMCTS) SetRootState(state *game.RPSCardGame) {
+func (mcts *BatchedMCTS) SetRootState(state GameState) {
 	mcts.root = &MCTSNode{
-		state:     state.Clone(),
-		parent:    nil,
-		children:  make([]*MCTSNode, 0),
-		visits:    0,
-		value:     0,
-		priorProb: 1.0,
+		State:      state.Clone(),
+		Parent:     nil,
+		Children:   make([]*MCTSNode, 0),
+		Visits:     0,
+		TotalValue: 0,
+		Prior:      0.0,
 	}
 }
 
@@ -78,7 +55,7 @@ func (mcts *BatchedMCTS) GetMove(gameState interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("invalid game state type, expected *game.RPSCardGame")
 	}
 
-	mcts.SetRootState(state)
+	mcts.SetRootState(NewRPSGameStateAdapter(state))
 	return mcts.Search(), nil
 }
 
@@ -132,12 +109,12 @@ func (mcts *BatchedMCTS) collectNodesToEvaluate(count int) {
 		node := mcts.selectNode(mcts.root)
 
 		// If node is terminal, backpropagate terminal value and continue
-		if node.state.IsGameOver() {
-			winner := node.state.GetWinner()
+		if node.State.IsGameOver() {
+			winner := node.State.GetWinner()
 			var value float64
 			if winner == game.NoPlayer {
 				value = 0.0 // Draw
-			} else if winner == node.state.CurrentPlayer {
+			} else if winner == node.State.GetCurrentPlayer() {
 				value = 1.0 // Win
 			} else {
 				value = -1.0 // Loss
@@ -148,8 +125,12 @@ func (mcts *BatchedMCTS) collectNodesToEvaluate(count int) {
 		}
 
 		// If node needs evaluation, add to batch
-		if node.visits == 0 {
-			features := mcts.extractFeatures(node.state)
+		if node.Visits == 0 {
+			rpsAdapter, ok := node.State.(*RPSGameStateAdapter)
+			if !ok {
+				panic("BatchedMCTS expects node.State to be adaptable to RPSGameStateAdapter for extractFeatures")
+			}
+			features := mcts.extractFeatures(rpsAdapter.RPSCardGame)
 			mcts.positions = append(mcts.positions, features)
 			mcts.nodesIndex[len(mcts.positions)-1] = node
 		}
@@ -186,17 +167,17 @@ func (mcts *BatchedMCTS) evaluateAndBackpropagate() {
 
 // selectNode traverses the tree to find a node to evaluate
 func (mcts *BatchedMCTS) selectNode(node *MCTSNode) *MCTSNode {
-	for !node.state.IsGameOver() && mcts.isFullyExpanded(node) {
+	for !node.State.IsGameOver() && mcts.isFullyExpanded(node) {
 		node = mcts.selectBestChild(node)
 	}
 
 	// If node is terminal, return it
-	if node.state.IsGameOver() {
+	if node.State.IsGameOver() {
 		return node
 	}
 
 	// If node is not fully expanded, expand it
-	if !mcts.isFullyExpanded(node) && node.visits > 0 {
+	if !mcts.isFullyExpanded(node) && node.Visits > 0 {
 		return mcts.expandNode(node, nil)
 	}
 
@@ -205,15 +186,15 @@ func (mcts *BatchedMCTS) selectNode(node *MCTSNode) *MCTSNode {
 
 // isFullyExpanded checks if all possible actions from this node have been explored
 func (mcts *BatchedMCTS) isFullyExpanded(node *MCTSNode) bool {
-	if node.visits == 0 {
+	if node.Visits == 0 {
 		return false
 	}
 
 	// Get legal moves
-	legalMoves := node.state.GetLegalMoves()
+	legalMoves := node.State.GetLegalMoves()
 
 	// If we have fewer children than legal moves, the node is not fully expanded
-	if len(node.children) < len(legalMoves) {
+	if len(node.Children) < len(legalMoves) {
 		return false
 	}
 
@@ -225,13 +206,13 @@ func (mcts *BatchedMCTS) selectBestChild(node *MCTSNode) *MCTSNode {
 	bestScore := -math.MaxFloat64
 	var bestChild *MCTSNode
 
-	for _, child := range node.children {
+	for _, child := range node.Children {
 		// PUCT formula (used in AlphaZero)
-		exploitation := child.value / float64(child.visits)
+		exploitation := child.TotalValue / float64(child.Visits)
 		exploration := mcts.params.ExplorationConst *
-			child.priorProb *
-			math.Sqrt(float64(node.visits)) /
-			float64(1+child.visits)
+			float64(child.Prior) *
+			math.Sqrt(float64(node.Visits)) /
+			float64(1+child.Visits)
 
 		score := exploitation + exploration
 
@@ -247,7 +228,7 @@ func (mcts *BatchedMCTS) selectBestChild(node *MCTSNode) *MCTSNode {
 // expandNode expands a node by creating one of its unexplored children
 func (mcts *BatchedMCTS) expandNode(node *MCTSNode, policy []float64) *MCTSNode {
 	// Get legal moves
-	legalMoves := node.state.GetLegalMoves()
+	legalMoves := node.State.GetLegalMoves()
 
 	// If no legal moves, return this node
 	if len(legalMoves) == 0 {
@@ -255,11 +236,11 @@ func (mcts *BatchedMCTS) expandNode(node *MCTSNode, policy []float64) *MCTSNode 
 	}
 
 	// Find a move that hasn't been tried yet
-	for _, move := range legalMoves {
+	for moveIdx, move := range legalMoves {
 		// Check if this move already has a child
 		alreadyExpanded := false
-		for _, child := range node.children {
-			if movesEqual(child.state.LastMove, move) {
+		for _, child := range node.Children {
+			if movesEqual(child.Move, move) {
 				alreadyExpanded = true
 				break
 			}
@@ -267,13 +248,12 @@ func (mcts *BatchedMCTS) expandNode(node *MCTSNode, policy []float64) *MCTSNode 
 
 		if !alreadyExpanded {
 			// Create new child for this move
-			childState := node.state.Clone()
+			childState := node.State.Clone()
 			childState.ApplyMove(move)
 
 			// Calculate prior probability if policy is provided
 			priorProb := 1.0 / float64(len(legalMoves))
 			if policy != nil {
-				moveIdx := mcts.getMoveIndex(move)
 				if moveIdx >= 0 && moveIdx < len(policy) {
 					priorProb = policy[moveIdx]
 				}
@@ -281,32 +261,35 @@ func (mcts *BatchedMCTS) expandNode(node *MCTSNode, policy []float64) *MCTSNode 
 
 			// Create child node
 			child := &MCTSNode{
-				state:     childState,
-				parent:    node,
-				children:  make([]*MCTSNode, 0),
-				visits:    0,
-				value:     0,
-				priorProb: priorProb,
+				State:      childState,
+				Parent:     node,
+				Children:   make([]*MCTSNode, 0),
+				Visits:     0,
+				TotalValue: 0,
+				Prior:      float32(priorProb),
+				Move:       move,
 			}
 
 			// Add child to parent
-			node.children = append(node.children, child)
+			node.Children = append(node.Children, child)
 			return child
 		}
 	}
 
-	// All moves have been expanded, return the first child (should not happen)
-	return node.children[0]
+	if len(node.Children) > 0 {
+		return node.Children[0]
+	}
+	return node
 }
 
 // backpropagate updates the statistics of nodes on the path from node to root
 func (mcts *BatchedMCTS) backpropagate(node *MCTSNode, value float64) {
 	current := node
 	for current != nil {
-		current.visits++
-		current.value += value
+		current.Visits++
+		current.TotalValue += value
 		value = -value // Flip value for opponent
-		current = current.parent
+		current = current.Parent
 	}
 }
 
@@ -315,22 +298,21 @@ func (mcts *BatchedMCTS) selectBestMove() game.RPSCardMove {
 	bestVisits := -1
 	var bestMove game.RPSCardMove
 
-	// Select move with most visits
-	for _, child := range mcts.root.children {
-		if child.visits > bestVisits {
-			bestVisits = child.visits
-			bestMove = child.state.LastMove
+	if mcts.root == nil || len(mcts.root.Children) == 0 {
+		if mcts.root != nil && mcts.root.State != nil {
+			legalMoves := mcts.root.State.GetLegalMoves()
+			if len(legalMoves) > 0 {
+				return legalMoves[rand.Intn(len(legalMoves))]
+			}
 		}
+		return game.RPSCardMove{}
 	}
 
-	if bestVisits == -1 {
-		// No children, return a random legal move
-		legalMoves := mcts.root.state.GetLegalMoves()
-		if len(legalMoves) > 0 {
-			return legalMoves[0]
+	for _, child := range mcts.root.Children {
+		if child.Visits > bestVisits {
+			bestVisits = child.Visits
+			bestMove = child.Move
 		}
-		// No legal moves, return an empty move
-		return game.RPSCardMove{}
 	}
 
 	return bestMove

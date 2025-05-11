@@ -284,7 +284,7 @@ def serve(port, policy_weights=None, value_weights=None, max_workers=10):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Neural network gRPC service for RPS")
-    parser.add_argument("--port", type=int, default=50051,
+    parser.add_argument("--port", type=int, default=50052,
                        help="Port for the gRPC server")
     parser.add_argument("--policy-weights", type=str, default=None,
                        help="Path to policy network weights")

@@ -15,7 +15,7 @@ const (
 	defaultInputSize  = 64
 	defaultHiddenSize = 128
 	defaultOutputSize = 8
-	defaultAddr       = "localhost:50051"
+	defaultAddr       = "localhost:50052"
 )
 
 func generateRandomInput(size int) []float64 {

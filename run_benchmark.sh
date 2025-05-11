@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Parse command line arguments first to get the port
-PORT=50051
+PORT=50052
 BATCH_SIZE=64
 ITERATIONS=100
 ARGS=""

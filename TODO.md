@@ -1,4 +1,6 @@
 # TODO
+* clean up spikes in neural_from_scratch? tournament_refactor?
+* remove all the CPP code?
 * clean up gomodules so it's easier to interact with - probably a module for running the training neat/mcts, and for tournament with minimax against all 
 
 

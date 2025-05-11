@@ -14,6 +14,20 @@ const (
 	NoPlayer
 )
 
+// String returns a string representation of the Player type
+func (p Player) String() string {
+	switch p {
+	case Player1:
+		return "Player1"
+	case Player2:
+		return "Player2"
+	case NoPlayer:
+		return "NoPlayer"
+	default:
+		return fmt.Sprintf("Player(%d)", p)
+	}
+}
+
 // RPSCardType represents card types
 type RPSCardType int
 
@@ -323,12 +337,12 @@ func (g *RPSCardGame) String() string {
 	}
 
 	result += fmt.Sprintf("\n\nCard Counts: Player 1 (UPPERCASE): %d, Player 2 (lowercase): %d\n", len(g.Player1Hand), len(g.Player2Hand))
-	result += fmt.Sprintf("Current player: %s (Round %d/%d)\n", g.CurrentPlayer, g.Round, g.MaxRounds)
+	result += fmt.Sprintf("Current player: %s (Round %d/%d)\n", g.CurrentPlayer.String(), g.Round, g.MaxRounds)
 
 	return result
 }
 
-// Clone creates a deep copy of the game (alias for Copy for MCTS compatibility)
+// Clone returns a deep copy of the game state
 func (g *RPSCardGame) Clone() *RPSCardGame {
 	return g.Copy()
 }
@@ -345,4 +359,103 @@ func (g *RPSCardGame) ApplyMove(move RPSCardMove) {
 		panic(fmt.Sprintf("Invalid move in ApplyMove: %v", err))
 	}
 	g.LastMove = move
+}
+
+// ToTensor converts the game state to a tensor representation for neural networks
+func (g *RPSCardGame) ToTensor() []float32 {
+	// Convert the board to a flat representation for the neural network
+	features := make([]float32, 0, 64) // Using 64 as a common size for neural input
+
+	// Board state (27 features: 9 positions x 3 states per position)
+	for pos := 0; pos < 9; pos++ {
+		// One-hot encoding for each position
+		isRock := 0.0
+		isPaper := 0.0
+		isScissors := 0.0
+		isEmpty := 1.0
+
+		if g.BoardOwner[pos] != NoPlayer {
+			isEmpty = 0.0
+			if g.Board[pos] == Rock {
+				isRock = 1.0
+			} else if g.Board[pos] == Paper {
+				isPaper = 1.0
+			} else if g.Board[pos] == Scissors {
+				isScissors = 1.0
+			}
+		}
+
+		// Add ownership information
+		isPlayer1 := 0.0
+		isPlayer2 := 0.0
+		if g.BoardOwner[pos] == Player1 {
+			isPlayer1 = 1.0
+		} else if g.BoardOwner[pos] == Player2 {
+			isPlayer2 = 1.0
+		}
+
+		features = append(features, float32(isRock), float32(isPaper), float32(isScissors))
+		features = append(features, float32(isEmpty), float32(isPlayer1), float32(isPlayer2))
+	}
+
+	// Current player
+	if g.CurrentPlayer == Player1 {
+		features = append(features, 1.0, 0.0)
+	} else {
+		features = append(features, 0.0, 1.0)
+	}
+
+	// Player 1 hand (one-hot encoding for each card type)
+	rockCount := 0
+	paperCount := 0
+	scissorsCount := 0
+	for _, card := range g.Player1Hand {
+		if card == Rock {
+			rockCount++
+		} else if card == Paper {
+			paperCount++
+		} else if card == Scissors {
+			scissorsCount++
+		}
+	}
+	features = append(features, float32(rockCount)/float32(g.HandSize))
+	features = append(features, float32(paperCount)/float32(g.HandSize))
+	features = append(features, float32(scissorsCount)/float32(g.HandSize))
+
+	// Player 2 hand (one-hot encoding for each card type)
+	rockCount = 0
+	paperCount = 0
+	scissorsCount = 0
+	for _, card := range g.Player2Hand {
+		if card == Rock {
+			rockCount++
+		} else if card == Paper {
+			paperCount++
+		} else if card == Scissors {
+			scissorsCount++
+		}
+	}
+	features = append(features, float32(rockCount)/float32(g.HandSize))
+	features = append(features, float32(paperCount)/float32(g.HandSize))
+	features = append(features, float32(scissorsCount)/float32(g.HandSize))
+
+	// Round information
+	features = append(features, float32(g.Round)/float32(g.MaxRounds))
+
+	// Pad to 64 features if needed
+	for len(features) < 64 {
+		features = append(features, 0.0)
+	}
+
+	return features
+}
+
+// GetLastMove returns the last move made in the game
+func (g *RPSCardGame) GetLastMove() RPSCardMove {
+	return g.LastMove
+}
+
+// String returns a string representation of the move
+func (m RPSCardMove) String() string {
+	return fmt.Sprintf("Player %d plays card %d to position %d", m.Player, m.CardIndex, m.Position)
 }
