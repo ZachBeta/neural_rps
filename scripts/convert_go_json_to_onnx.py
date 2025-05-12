@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import os
 import numpy as np
+import argparse
 
 # Define PyTorch Model Architectures (matching Go implementation)
 # These need to be flexible enough to match what's in the JSON.
@@ -45,9 +46,9 @@ def load_and_convert_model(json_path, onnx_path, model_type_str):
     constructs the corresponding PyTorch model, loads the weights,
     and then exports it to ONNX format.
     """
-    # Construct absolute path for JSON file if it's relative to script location
-    script_dir = os.path.dirname(__file__)
-    abs_json_path = os.path.join(script_dir, json_path)
+    # Construct absolute path for JSON file.
+    # The provided json_path can be absolute or relative to the CWD.
+    abs_json_path = os.path.abspath(json_path)
     
     print(f"Loading Go model from JSON: {abs_json_path}")
     with open(abs_json_path, 'r') as f:
@@ -115,35 +116,51 @@ def load_and_convert_model(json_path, onnx_path, model_type_str):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Convert Go JSON neural network models to ONNX.")
+    parser.add_argument(
+        "--json_model_path",
+        type=str,
+        default="../alphago_demo/output/rps_value1.model", # Default for backward compatibility
+        help="Path to the input Go JSON model file. Can be relative to CWD or absolute."
+    )
+    parser.add_argument(
+        "--onnx_output_path",
+        type=str,
+        default="output/rps_value1.onnx", # Default for backward compatibility, relative to CWD (python/)
+        help="Path for the output ONNX model file. Can be relative to CWD or absolute."
+    )
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        default="value",
+        choices=["value", "policy"],
+        help="Type of the model to convert ('value' or 'policy')."
+    )
+
+    args = parser.parse_args()
+
     # This script is in 'scripts/' directory.
     # It's intended to be run from the 'python/' directory using a command like:
     # $ cd python
     # $ source .venv/bin/activate
-    # $ python ../scripts/convert_go_json_to_onnx.py
+    # $ python ../scripts/convert_go_json_to_onnx.py --json_model_path ../alphago_demo/output/your_model.json --onnx_output_path output/your_model.onnx
 
-    # Output directory will be 'python/output/'
-    # This path is relative to the CWD (which should be 'python/')
-    output_dir_in_python_folder = "output" 
-    if not os.path.exists(output_dir_in_python_folder):
-        os.makedirs(output_dir_in_python_folder)
-        print(f"Created directory: {os.path.abspath(output_dir_in_python_folder)}")
+    # Ensure output directory exists if onnx_output_path is relative
+    # and implies a subdirectory that might not exist.
+    abs_onnx_output_path = os.path.abspath(args.onnx_output_path)
+    output_dir = os.path.dirname(abs_onnx_output_path)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created directory: {output_dir}")
 
-
-    # Path to the JSON model, relative to this script's file location (scripts/)
-    # So, if script is scripts/convert..., and model is alphago_demo/output/rps_value1.model
-    # the relative path from script to model is ../alphago_demo/output/rps_value1.model
-    value_model_json_relative_path = "../alphago_demo/output/rps_value1.model"
-    
-    # Desired ONNX output filename
-    value_model_onnx_filename = "rps_value1.onnx"
-    # This path will be relative to CWD (which should be 'python/')
-    # e.g., 'output/rps_value1.onnx'
-    final_onnx_output_path = os.path.join(output_dir_in_python_folder, value_model_onnx_filename)
 
     print(f"Starting conversion process...")
-    # json_path passed to function is relative to script location
-    # onnx_path passed to function is relative to CWD (python directory)
-    load_and_convert_model(value_model_json_relative_path, final_onnx_output_path, "value")
+    print(f"  Input JSON: {os.path.abspath(args.json_model_path)}")
+    print(f"  Output ONNX: {abs_onnx_output_path}")
+    print(f"  Model Type: {args.model_type}")
+
+    # json_path and onnx_path are now taken from args
+    load_and_convert_model(args.json_model_path, args.onnx_output_path, args.model_type)
     
-    print(f"Conversion attempt finished for {value_model_json_relative_path}.")
-    print(f"Please check for the ONNX model at: {os.path.abspath(final_onnx_output_path)}") 
+    print(f"Conversion attempt finished for {os.path.abspath(args.json_model_path)}.")
+    print(f"Please check for the ONNX model at: {abs_onnx_output_path}") 

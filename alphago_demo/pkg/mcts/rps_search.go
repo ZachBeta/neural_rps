@@ -85,7 +85,7 @@ func (mcts *RPSMCTS) searchSerial() *RPSMCTSNode {
 		node := mcts.selection(mcts.Root)
 
 		// Expansion phase (if needed)
-		if !node.GameState.IsGameOver() && node.Visits > 0 {
+		if !node.GameState.IsGameOver() && node.Visits.Load() > 0 {
 			priors := mcts.PolicyNetwork.Predict(node.GameState)
 			node.ExpandAll(priors)
 
@@ -159,7 +159,7 @@ func (mcts *RPSMCTS) searchParallel() *RPSMCTSNode {
 				localState := node.GameState.Copy()
 
 				// Check if expansion is needed, using a local check to minimize lock time
-				needsExpansion := !localState.IsGameOver() && node.Visits > 0 && len(node.Children) == 0
+				needsExpansion := !localState.IsGameOver() && node.Visits.Load() > 0 && len(node.Children) == 0
 
 				// Expansion phase (with write lock, only if needed)
 				if needsExpansion {
@@ -170,7 +170,7 @@ func (mcts *RPSMCTS) searchParallel() *RPSMCTSNode {
 					treeMutex.Lock()
 
 					// Double-check that expansion is still needed (another thread might have expanded)
-					if !node.GameState.IsGameOver() && node.Visits > 0 && len(node.Children) == 0 {
+					if !node.GameState.IsGameOver() && node.Visits.Load() > 0 && len(node.Children) == 0 {
 						node.ExpandAll(priors)
 
 						// If expansion created children, select one of them
@@ -207,7 +207,7 @@ func (mcts *RPSMCTS) selectionThreadSafe(node *RPSMCTSNode) *RPSMCTSNode {
 	// Keep traversing until we reach a leaf node or a terminal state
 	for len(node.Children) > 0 && !node.GameState.IsGameOver() {
 		node = node.SelectChild(mcts.Params.ExplorationConst)
-		if node.Visits == 0 {
+		if node.Visits.Load() == 0 {
 			// Found an unvisited node, return it
 			return node
 		}
@@ -254,7 +254,7 @@ func (mcts *RPSMCTS) selection(node *RPSMCTSNode) *RPSMCTSNode {
 	// Keep traversing until we reach a leaf node or a terminal state
 	for len(node.Children) > 0 && !node.GameState.IsGameOver() {
 		node = node.SelectChild(mcts.Params.ExplorationConst)
-		if node.Visits == 0 {
+		if node.Visits.Load() == 0 {
 			// Found an unvisited node, return it
 			return node
 		}

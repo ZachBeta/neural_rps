@@ -349,42 +349,59 @@ func (sp *RPSSelfPlay) playGame(verbose bool) []RPSTrainingExample {
 
 // extractPolicy extracts a policy distribution from MCTS visit counts
 func (sp *RPSSelfPlay) extractPolicy(node *mcts.RPSMCTSNode) []float64 {
-	policy := make([]float64, 9) // 9 positions flattened (3x3 board)
+	// Initialize policy target with zeros (9 possible positions)
+	policyTarget := make([]float64, 9)
 
+	// Check if node and children are valid
 	if node == nil || len(node.Children) == 0 {
-		// Uniform random policy if no children
-		for i := range policy {
-			policy[i] = 1.0 / float64(9)
+		// No children, return uniform distribution or zeros if no valid moves
+		if node != nil && node.GameState != nil {
+			validMoves := node.GameState.GetValidMoves()
+			if len(validMoves) > 0 {
+				prob := 1.0 / float64(len(validMoves))
+				for _, move := range validMoves {
+					if move.Position >= 0 && move.Position < 9 {
+						policyTarget[move.Position] = prob
+					}
+				}
+			}
 		}
-		return policy
+		return policyTarget
 	}
 
-	// Group children by position to handle multiple cards that can be played at the same position
-	movesByPosition := make(map[int]int) // position -> total visits
-	totalVisits := 0
+	// Use visit counts from children to form the policy target
+	movesByPosition := make([]int64, 9) // Changed to int64 to match atomic.Int64.Load()
+	totalVisits := int64(0)             // Changed to int64
 
 	for _, child := range node.Children {
-		if child.Move != nil {
+		if child.Move != nil && child.Move.Position >= 0 && child.Move.Position < 9 {
 			position := child.Move.Position
-			movesByPosition[position] += child.Visits
-			totalVisits += child.Visits
+			childVisitsLoaded := child.Visits.Load()
+			movesByPosition[position] += childVisitsLoaded
+			totalVisits += childVisitsLoaded
 		}
 	}
 
-	// If no visits, use uniform random policy
-	if totalVisits == 0 {
-		for i := range policy {
-			policy[i] = 1.0 / float64(9)
+	if totalVisits > 0 {
+		for i := 0; i < 9; i++ {
+			policyTarget[i] = float64(movesByPosition[i]) / float64(totalVisits)
 		}
-		return policy
+	} else {
+		// Fallback to uniform if no visits (should be rare if search ran)
+		if node.GameState != nil {
+			validMoves := node.GameState.GetValidMoves()
+			if len(validMoves) > 0 {
+				prob := 1.0 / float64(len(validMoves))
+				for _, move := range validMoves {
+					if move.Position >= 0 && move.Position < 9 {
+						policyTarget[move.Position] = prob
+					}
+				}
+			}
+		}
 	}
 
-	// Set policy based on visit proportions by position
-	for pos, visits := range movesByPosition {
-		policy[pos] = float64(visits) / float64(totalVisits)
-	}
-
-	return policy
+	return policyTarget
 }
 
 // TrainNetworks trains the policy and value networks on the generated examples

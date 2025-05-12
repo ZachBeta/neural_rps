@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	defaultInputSize  = 64
-	defaultHiddenSize = 128
-	defaultOutputSize = 8
-	defaultAddr       = "localhost:50052"
+	defaultInputSize   = 64
+	defaultHiddenSize  = 128
+	defaultOutputSize  = 8
+	defaultTfGpuAddr   = "localhost:50052" // For the original TensorFlow Python service
+	defaultOnnxGpuPort = 50054             // Default for the new ONNX Python gRPC service
 )
 
 func generateRandomInput(size int) []float64 {
@@ -318,70 +319,103 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 	fmt.Println()
 }
 
+// runGPUBenchmark will run GPU benchmarks using a gRPC connection to a Python service.
+// If targeting the ONNX Python service, ensure inputSize matches the ONNX model's expected input.
+func runGPUBenchmark(addr string, inputSize, hiddenSize, outputSize, iterations, batchSize int, isONNXService bool) {
+	serviceType := "TensorFlow Python Service"
+	if isONNXService {
+		serviceType = "ONNX Python Service"
+	}
+	fmt.Printf("GPU Benchmarks (%s):\n", serviceType)
+
+	fmt.Printf("  Connecting to GPU service at %s...\n", addr)
+	// inputSize, hiddenSize, outputSize are passed here for consistency with CPU network creation
+	// and for data generation. For ONNX, the Python service's model defines the true architecture.
+	gpuNetwork, err := gpu.NewRPSGPUPolicyNetwork(addr)
+	if err != nil {
+		log.Fatalf("Failed to create GPU network: %v", err)
+	}
+	defer gpuNetwork.Close()
+
+	// Single prediction benchmark
+	gpuSingleTime := benchmarkGPUSingle(gpuNetwork, inputSize, iterations)
+	gpuSingleAvg := float64(gpuSingleTime.Microseconds()) / float64(iterations)
+	fmt.Printf("  Single prediction: %v (avg %.2f µs/prediction)\n", gpuSingleTime, gpuSingleAvg)
+
+	// Batch prediction benchmark
+	gpuBatchTime := benchmarkGPUBatch(gpuNetwork, inputSize, batchSize, iterations)
+	gpuBatchAvg := float64(gpuBatchTime.Microseconds()) / float64(iterations*batchSize)
+	fmt.Printf("  Batch prediction:  %v (avg %.2f µs/prediction)\n", gpuBatchTime, gpuBatchAvg)
+
+	// Print network stats
+	stats := gpuNetwork.GetStats()
+	fmt.Printf("  Total calls: %d, Total positions: %d\n", stats.TotalCalls, stats.TotalBatchSize)
+	fmt.Printf("  Avg latency: %.2f µs, Avg batch size: %.2f\n", stats.AvgLatencyUs, stats.AvgBatchSize)
+	fmt.Println()
+}
+
 func main() {
 	// Define command line flags
-	inputSize := flag.Int("input-size", defaultInputSize, "Size of the input layer")
-	hiddenSize := flag.Int("hidden-size", defaultHiddenSize, "Size of the hidden layer")
-	outputSize := flag.Int("output-size", defaultOutputSize, "Size of the output layer")
-	iterations := flag.Int("iterations", 100, "Number of iterations for each benchmark")
-	batchSize := flag.Int("batch-size", 32, "Batch size for batch processing")
-	addr := flag.String("addr", defaultAddr, "The address of the gRPC server")
-	cpuOnly := flag.Bool("cpu-only", false, "Run only CPU benchmarks")
-	gpuOnly := flag.Bool("gpu-only", false, "Run only GPU benchmarks")
-	onnxModel := flag.String("onnx-model", "", "Path to the ONNX model for CPU benchmarking")
+	inputSize := flag.Int("input-size", defaultInputSize, "Input layer size for neural networks")
+	hiddenSize := flag.Int("hidden-size", defaultHiddenSize, "Hidden layer size for neural networks")
+	outputSize := flag.Int("output-size", defaultOutputSize, "Output layer size for neural networks")
+	iterations := flag.Int("iterations", 1000, "Number of iterations for each benchmark")
+	batchSize := flag.Int("batch-size", 32, "Batch size for batch predictions")
+	tfGpuAddr := flag.String("gpu-addr", defaultTfGpuAddr, "Address of the TensorFlow Python gRPC service (legacy GPU benchmark)")
+	onnxGpuPort := flag.Int("onnx-gpu-port", defaultOnnxGpuPort, "Port for the ONNX Python gRPC service (new GPU benchmark)")
+	onnxModelPath := flag.String("onnx-model", "", "Path to the ONNX model for CPU benchmarks (e.g., ./output/rps_value1.onnx)")
+	runCPUAdHoc := flag.Bool("run-cpu-adhoc", true, "Run CPU benchmarks with ad-hoc Go network")
+	runCPUONNX := flag.Bool("run-cpu-onnx", true, "Run CPU benchmarks with ONNX model")
+	runGpuTF := flag.Bool("run-gpu-tf", false, "Run GPU benchmarks with the (legacy) TensorFlow Python service")
+	runGpuONNX := flag.Bool("run-gpu-onnx", true, "Run GPU benchmarks with the ONNX Python service")
 
 	flag.Parse()
 
 	// Seed random number generator
 	rand.Seed(time.Now().UnixNano())
 
-	fmt.Printf("Benchmarking neural networks with:\n")
-	fmt.Printf("  Input size: %d\n", *inputSize)
-	fmt.Printf("  Hidden size: %d\n", *hiddenSize)
-	fmt.Printf("  Output size: %d\n", *outputSize)
+	fmt.Printf("Benchmark Configuration:\n")
+	fmt.Printf("  Input Size: %d\n", *inputSize)
+	fmt.Printf("  Hidden Size: %d\n", *hiddenSize)
+	fmt.Printf("  Output Size: %d\n", *outputSize)
 	fmt.Printf("  Iterations: %d\n", *iterations)
-	fmt.Printf("  Batch size: %d\n", *batchSize)
+	fmt.Printf("  Batch Size: %d\n", *batchSize)
+	if *runCPUONNX {
+		if *onnxModelPath == "" {
+			fmt.Println("  ONNX Model Path for CPU: Not provided (CPU ONNX benchmarks will be skipped)")
+		} else {
+			fmt.Println("  ONNX Model Path for CPU:", *onnxModelPath)
+		}
+	}
+	if *runGpuTF {
+		fmt.Println("  GPU Service Address (TensorFlow):", *tfGpuAddr)
+	}
+	if *runGpuONNX {
+		fmt.Printf("  GPU Service Port (ONNX Python): %d\n", *onnxGpuPort)
+	}
 	fmt.Println()
 
-	// Run CPU benchmarks
-	if !*gpuOnly {
+	if *runCPUAdHoc {
 		runCPUAdHocBenchmark_Old(*inputSize, *hiddenSize, *outputSize, *iterations, *batchSize)
-		// Also run the ONNX CPU benchmark if a model path is provided
-		runCPUONNXBenchmark(*onnxModel, *inputSize, *iterations, *batchSize)
 	}
 
-	// Run GPU benchmarks
-	if !*cpuOnly {
-		fmt.Println("GPU Benchmarks:")
-		gpuNetwork, err := gpu.NewRPSGPUPolicyNetwork(*addr)
-		if err != nil {
-			log.Fatalf("Failed to create GPU network: %v", err)
-		}
-		defer gpuNetwork.Close()
-
-		// Single prediction benchmark
-		gpuSingleTime := benchmarkGPUSingle(gpuNetwork, *inputSize, *iterations)
-		gpuSingleAvg := float64(gpuSingleTime.Microseconds()) / float64(*iterations)
-		fmt.Printf("  Single prediction: %v (avg %.2f µs/prediction)\n", gpuSingleTime, gpuSingleAvg)
-
-		// Batch prediction benchmark
-		gpuBatchTime := benchmarkGPUBatch(gpuNetwork, *inputSize, *batchSize, *iterations)
-		gpuBatchAvg := float64(gpuBatchTime.Microseconds()) / float64(*iterations*(*batchSize))
-		fmt.Printf("  Batch prediction:  %v (avg %.2f µs/prediction)\n", gpuBatchTime, gpuBatchAvg)
-
-		// Print network stats
-		stats := gpuNetwork.GetStats()
-		fmt.Printf("  Total calls: %d, Total positions: %d\n", stats.TotalCalls, stats.TotalBatchSize)
-		fmt.Printf("  Avg latency: %.2f µs, Avg batch size: %.2f\n", stats.AvgLatencyUs, stats.AvgBatchSize)
-		fmt.Println()
+	if *runCPUONNX {
+		runCPUONNXBenchmark(*onnxModelPath, *inputSize, *iterations, *batchSize)
 	}
 
-	// Print comparison if both CPU and GPU were benchmarked
-	if !*cpuOnly && !*gpuOnly {
-		// Note: These values are calculated in the blocks above, but would need to be returned
-		// or made accessible to actually compare here. This is just placeholder code.
-		fmt.Println("Performance Comparison:")
-		fmt.Println("  Single prediction speedup: GPU is X times faster than CPU")
-		fmt.Println("  Batch prediction speedup: GPU is Y times faster than CPU")
+	// GPU Benchmarks with TensorFlow service (legacy)
+	if *runGpuTF {
+		runGPUBenchmark(*tfGpuAddr, *inputSize, *hiddenSize, *outputSize, *iterations, *batchSize, false)
+	}
+
+	// GPU Benchmarks with ONNX Python service
+	if *runGpuONNX {
+		onnxGpuServiceAddr := fmt.Sprintf("localhost:%d", *onnxGpuPort)
+		// When calling the ONNX GPU service, the inputSize passed to runGPUBenchmark
+		// is used for data generation. It MUST match the actual input size expected
+		// by the ONNX model loaded in the Python service. The Python service
+		// infers its model's input size directly from the .onnx file.
+		// hiddenSize and outputSize are less critical here as the Python service's model dictates them.
+		runGPUBenchmark(onnxGpuServiceAddr, *inputSize, *hiddenSize, *outputSize, *iterations, *batchSize, true)
 	}
 }

@@ -2,6 +2,7 @@ package mcts
 
 import (
 	"math"
+	"sync/atomic"
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
 )
@@ -12,28 +13,29 @@ type RPSMCTSNode struct {
 	Move       *game.RPSMove
 	Parent     *RPSMCTSNode
 	Children   []*RPSMCTSNode
-	Visits     int
+	Visits     atomic.Int64
 	TotalValue float64
 	Priors     []float64 // Policy priors from neural network
 }
 
 // NewRPSMCTSNode creates a new MCTS node
 func NewRPSMCTSNode(state *game.RPSGame, move *game.RPSMove, parent *RPSMCTSNode, priors []float64) *RPSMCTSNode {
-	return &RPSMCTSNode{
+	n := &RPSMCTSNode{
 		GameState:  state,
 		Move:       move,
 		Parent:     parent,
 		Children:   make([]*RPSMCTSNode, 0),
-		Visits:     0,
 		TotalValue: 0,
 		Priors:     priors,
 	}
+	return n
 }
 
 // UCB calculates the Upper Confidence Bound value for this node
 // Used for node selection during MCTS
 func (n *RPSMCTSNode) UCB(explorationConstant float64) float64 {
-	if n.Visits == 0 {
+	visits := n.Visits.Load()
+	if visits == 0 {
 		return math.Inf(1) // Infinity for unvisited nodes
 	}
 
@@ -47,8 +49,12 @@ func (n *RPSMCTSNode) UCB(explorationConstant float64) float64 {
 	// UCB formula with prior: Q + U
 	// Q = average value
 	// U = exploration bonus with prior
-	exploitation := n.TotalValue / float64(n.Visits)
-	exploration := explorationConstant * prior * math.Sqrt(float64(n.Parent.Visits)) / (1.0 + float64(n.Visits))
+	exploitation := n.TotalValue / float64(visits)
+	parentVisits := int64(0)
+	if n.Parent != nil {
+		parentVisits = n.Parent.Visits.Load()
+	}
+	exploration := explorationConstant * prior * math.Sqrt(float64(parentVisits)) / (1.0 + float64(visits))
 
 	return exploitation + exploration
 }
@@ -101,7 +107,7 @@ func (n *RPSMCTSNode) ExpandAll(priors []float64) {
 
 // Update updates the node statistics based on simulation results
 func (n *RPSMCTSNode) Update(value float64) {
-	n.Visits++
+	n.Visits.Add(1)
 	n.TotalValue += value
 }
 
@@ -124,12 +130,13 @@ func (n *RPSMCTSNode) MostVisitedChild() *RPSMCTSNode {
 	}
 
 	bestChild := n.Children[0]
-	mostVisits := bestChild.Visits
+	mostVisits := bestChild.Visits.Load()
 
 	for _, child := range n.Children[1:] {
-		if child.Visits > mostVisits {
+		currentVisits := child.Visits.Load()
+		if currentVisits > mostVisits {
 			bestChild = child
-			mostVisits = child.Visits
+			mostVisits = currentVisits
 		}
 	}
 
@@ -143,18 +150,23 @@ func (n *RPSMCTSNode) BestChild() *RPSMCTSNode {
 	}
 
 	bestChild := n.Children[0]
-	bestValue := bestChild.TotalValue / float64(bestChild.Visits)
-
-	if bestChild.Visits == 0 {
-		bestValue = 0
+	bestChildVisits := bestChild.Visits.Load()
+	bestValue := 0.0
+	if bestChildVisits > 0 {
+		bestValue = bestChild.TotalValue / float64(bestChildVisits)
+	} else {
+		// Handle case where the first child might have 0 visits if it's the only one
+		// For safety, though UCB should prevent selecting unvisited if others exist
+		bestValue = math.Inf(-1) // Or some other appropriate default for unvisited
 	}
 
 	for _, child := range n.Children[1:] {
-		if child.Visits == 0 {
+		childVisits := child.Visits.Load()
+		if childVisits == 0 {
 			continue
 		}
 
-		value := child.TotalValue / float64(child.Visits)
+		value := child.TotalValue / float64(childVisits)
 		if value > bestValue {
 			bestChild = child
 			bestValue = value
