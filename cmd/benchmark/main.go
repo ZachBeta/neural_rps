@@ -116,7 +116,8 @@ func runCPUAdHocBenchmark_Old(inputSize, hiddenSize, outputSize, iterations, bat
 }
 
 // runCPUONNXBenchmark will run CPU benchmarks using a loaded ONNX model.
-func runCPUONNXBenchmark(onnxModelPath string, inputSize, iterations, batchSize int) {
+// flagInputSize is the input_size passed from the command line, used for ad-hoc or as a reference.
+func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchSize int) {
 	fmt.Println("CPU Benchmarks (ONNX Model):")
 	if onnxModelPath == "" {
 		fmt.Println("  ONNX model path not provided, skipping ONNX CPU benchmark.")
@@ -142,6 +143,34 @@ func runCPUONNXBenchmark(onnxModelPath string, inputSize, iterations, batchSize 
 	// According to docs, this should be called when no more ORT functions are needed.
 	defer ort.DestroyEnvironment()
 
+	// --- Infer Model Input Size ---
+	inputsInfo, _, err := ort.GetInputOutputInfo(onnxModelPath)
+	if err != nil {
+		log.Fatalf("Failed to get ONNX model input/output info for '%s': %v", onnxModelPath, err)
+		return
+	}
+	if len(inputsInfo) == 0 {
+		log.Fatalf("ONNX model '%s' has no inputs defined according to GetInputOutputInfo.", onnxModelPath)
+		return
+	}
+	firstInputDims := inputsInfo[0].Dimensions
+	if len(firstInputDims) == 0 {
+		log.Fatalf("First input of ONNX model '%s' has no dimensions listed in GetInputOutputInfo.", onnxModelPath)
+		return
+	}
+	// For a flat vector input like rps_value1.onnx, we expect a shape like [N, M] or [M].
+	// Where N is batch size (can be dynamic, e.g., -1 or 1 for single item) and M is feature count.
+	// We take the last dimension as the feature count.
+	modelFeatureInputSize := int(firstInputDims[len(firstInputDims)-1])
+	if modelFeatureInputSize <= 0 {
+		log.Fatalf("Inferred ONNX model input feature size (%d) must be positive. Dimensions from model: %v", modelFeatureInputSize, firstInputDims)
+		return
+	}
+	fmt.Printf("  Inferred ONNX Model Input Feature Size: %d (from model dimensions: %v)\n", modelFeatureInputSize, firstInputDims)
+	if flagInputSize != modelFeatureInputSize {
+		fmt.Printf("  Note: Command-line --input-size (%d) differs from inferred ONNX model input feature size (%d). Using inferred size for ONNX benchmarks.\n", flagInputSize, modelFeatureInputSize)
+	}
+
 	inputNames := []string{"input"}   // Matches the name used during ONNX export from Python
 	outputNames := []string{"output"} // Matches the name used during ONNX export from Python
 
@@ -158,21 +187,15 @@ func runCPUONNXBenchmark(onnxModelPath string, inputSize, iterations, batchSize 
 	// --- Actual ONNX benchmarking logic starts here ---
 
 	// 1. Prepare a single input tensor
-	// Note: The inputSize for rps_value1.model is 81.
-	// The 'inputSize' parameter to this function should match the model's requirement.
-	if inputSize != 81 { // Temporary check for our specific model
-		log.Printf("Warning: inputSize %d does not match rps_value1.model expected inputSize of 81. Using %d.", inputSize, inputSize)
-	}
-
-	randomInputFloat64 := generateRandomInput(inputSize) // Returns []float64
-	randomInputFloat32 := make([]float32, inputSize)
+	randomInputFloat64 := generateRandomInput(modelFeatureInputSize) // Returns []float64
+	randomInputFloat32 := make([]float32, modelFeatureInputSize)
 	for i, val := range randomInputFloat64 {
 		randomInputFloat32[i] = float32(val)
 	}
 
-	// Shape for a single input: [1, inputSize]
+	// Shape for a single input: [1, modelFeatureInputSize]
 	// The batch dimension is 1 because we are creating a tensor for a single prediction.
-	inputShape := ort.NewShape(1, int64(inputSize))
+	inputShape := ort.NewShape(1, int64(modelFeatureInputSize))
 	inputTensor, err := ort.NewTensor(inputShape, randomInputFloat32)
 	if err != nil {
 		log.Fatalf("Failed to create input tensor: %v", err)
@@ -239,18 +262,17 @@ func runCPUONNXBenchmark(onnxModelPath string, inputSize, iterations, batchSize 
 	// --- Batch Prediction Benchmark Loop ---
 	fmt.Println("  Starting batch prediction benchmark...")
 
-	// 1. Prepare a batch input tensor
-	// The inputSize here should correctly correspond to the model's expected single item input dimension (e.g., 81)
-	randomBatchFloat64 := generateRandomBatch(batchSize, inputSize) // Returns [][]float64
-	randomBatchFloat32 := make([]float32, 0, batchSize*inputSize)
+	// 1. Prepare a batch input tensor using modelFeatureInputSize
+	randomBatchFloat64 := generateRandomBatch(batchSize, modelFeatureInputSize) // Returns [][]float64
+	randomBatchFloat32 := make([]float32, 0, batchSize*modelFeatureInputSize)
 	for _, singleInputFloat64 := range randomBatchFloat64 {
 		for _, val := range singleInputFloat64 {
 			randomBatchFloat32 = append(randomBatchFloat32, float32(val))
 		}
 	}
 
-	// Shape for a batched input: [batchSize, inputSize]
-	batchInputShape := ort.NewShape(int64(batchSize), int64(inputSize))
+	// Shape for a batched input: [batchSize, modelFeatureInputSize]
+	batchInputShape := ort.NewShape(int64(batchSize), int64(modelFeatureInputSize))
 	batchInputTensor, err := ort.NewTensor(batchInputShape, randomBatchFloat32)
 	if err != nil {
 		log.Fatalf("Failed to create batch input tensor: %v", err)
