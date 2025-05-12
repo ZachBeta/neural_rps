@@ -8,6 +8,7 @@ import (
 	"time"
 
 	ort "github.com/yalue/onnxruntime_go"
+	// "github.com/zachbeta/neural_rps/pkg/neural" // Removed unused import
 	"github.com/zachbeta/neural_rps/pkg/neural/cpu"
 	"github.com/zachbeta/neural_rps/pkg/neural/gpu"
 )
@@ -127,21 +128,14 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 	}
 	fmt.Printf("  Attempting to load ONNX Model Path: %s\n", onnxModelPath)
 
-	// Explicitly set the path to the ONNX Runtime shared library.
-	// This path was found by inspecting the contents of the Go module directory for yalue/onnxruntime_go.
-	// For macOS ARM64, the library is typically named onnxruntime_arm64.dylib.
-	// The version v1.19.0 corresponds to the version of the Go wrapper module being used.
+	// Set shared library path (assuming it's needed)
 	sharedLibraryPath := "/Users/zmorek/go/pkg/mod/github.com/yalue/onnxruntime_go@v1.19.0/test_data/onnxruntime_arm64.dylib"
 	ort.SetSharedLibraryPath(sharedLibraryPath)
 
-	// Initialize ONNX runtime; this is a good place to do it once.
-	// Note: For multiple models or dynamic library paths, more complex initialization might be needed.
 	err := ort.InitializeEnvironment()
 	if err != nil {
 		log.Fatalf("Failed to initialize ONNX Runtime environment: %v", err)
 	}
-	// Defer finalization of the ONNX Runtime environment.
-	// According to docs, this should be called when no more ORT functions are needed.
 	defer ort.DestroyEnvironment()
 
 	// --- Infer Model Input Size ---
@@ -155,14 +149,11 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 		return
 	}
 	firstInputDims := inputsInfo[0].Dimensions
-	if len(firstInputDims) == 0 {
-		log.Fatalf("First input of ONNX model '%s' has no dimensions listed in GetInputOutputInfo.", onnxModelPath)
+	if len(firstInputDims) < 2 {
+		log.Fatalf("First input of ONNX model '%s' has unexpected dimensions %v (expected at least 2).", onnxModelPath, firstInputDims)
 		return
 	}
-	// For a flat vector input like rps_value1.onnx, we expect a shape like [N, M] or [M].
-	// Where N is batch size (can be dynamic, e.g., -1 or 1 for single item) and M is feature count.
-	// We take the last dimension as the feature count.
-	modelFeatureInputSize := int(firstInputDims[len(firstInputDims)-1])
+	modelFeatureInputSize := int(firstInputDims[1]) // Assuming shape [batch_size, features]
 	if modelFeatureInputSize <= 0 {
 		log.Fatalf("Inferred ONNX model input feature size (%d) must be positive. Dimensions from model: %v", modelFeatureInputSize, firstInputDims)
 		return
@@ -185,6 +176,19 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 
 	fmt.Printf("  Successfully loaded ONNX model and created dynamic session.\n")
 
+	// ----- DEBUG: Re-check output info just before running -----
+	_, checkOutputInfo, checkErr := ort.GetInputOutputInfo(onnxModelPath)
+	if checkErr != nil {
+		log.Printf("DEBUG: Failed to re-check output info: %v\n", checkErr)
+	} else {
+		log.Printf("DEBUG: Re-checked Output Info Count: %d\n", len(checkOutputInfo))
+		for i, info := range checkOutputInfo {
+			// Assuming float32 type for printing dimensions based on session creation
+			log.Printf("DEBUG: Re-checked Output %d - Name: %s, Dimensions: %v\n", i, info.Name, info.Dimensions)
+		}
+	}
+	// ----- END DEBUG -----
+
 	// --- Actual ONNX benchmarking logic starts here ---
 
 	// 1. Prepare a single input tensor
@@ -193,9 +197,6 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 	for i, val := range randomInputFloat64 {
 		randomInputFloat32[i] = float32(val)
 	}
-
-	// Shape for a single input: [1, modelFeatureInputSize]
-	// The batch dimension is 1 because we are creating a tensor for a single prediction.
 	inputShape := ort.NewShape(1, int64(modelFeatureInputSize))
 	inputTensor, err := ort.NewTensor(inputShape, randomInputFloat32)
 	if err != nil {
@@ -203,7 +204,6 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 		return
 	}
 	defer inputTensor.Destroy()
-
 	fmt.Printf("  Successfully created input tensor with shape %v.\n", inputShape)
 
 	// 2. Run inference for a single input
@@ -212,25 +212,16 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 
 	// Pre-allocate output tensor(s). For DynamicSession[InputT, OutputT],
 	// the Run method expects a slice of output tensors, []*Tensor[OutputT], to be filled.
-	// For rps_value1.model (a ValueNet), the output is expected to be a single float32 value.
-	// The shape for a single output item is typically [1, 1] for a scalar.
-	outputShape := ort.NewShape(1, 1) // Assuming one output, batch size 1, output size 1.
+	// We need to know the expected output shape. Assuming policy model -> [1, 9]
+	// NOTE: This assumes the output is for a policy model!
+	outputShape := ort.NewShape(1, 9) // Batch size 1, 9 outputs for policy
 
-	// Create an empty tensor to serve as a placeholder for the output.
-	// The ONNX Runtime will write the inference result into this tensor's memory.
-	// The type float32 matches the OutputT of NewDynamicSession[float32, float32].
 	outputPlaceholder, err := ort.NewEmptyTensor[float32](outputShape)
 	if err != nil {
 		log.Fatalf("Failed to create empty output tensor: %v", err)
 		return
 	}
-	// Crucially, defer the destruction of this tensor.
 	defer outputPlaceholder.Destroy()
-
-	// This slice will be passed to session.Run. It contains the tensor(s)
-	// where the ONNX runtime will store the results. The number of tensors
-	// in this slice must match the number of output names defined for the session.
-	// In our case, we have one outputName ("output").
 	outputsToFill := []*ort.Tensor[float32]{outputPlaceholder}
 
 	// --- Single Prediction Benchmark Loop ---
@@ -240,11 +231,10 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 	for i := 0; i < iterations; i++ {
 		err = session.Run(inputTensors, outputsToFill)
 		if err != nil {
+			// Simple error handling for now
 			log.Fatalf("Failed to run ONNX inference during single prediction benchmark (iteration %d): %v", i, err)
-			return // Redundant due to log.Fatalf, but good practice
+			return
 		}
-		// Optional: could inspect outputsToFill[0].GetData() here if needed for debugging,
-		// but for a benchmark, we focus on timing the Run call.
 	}
 	elapsedSingle := time.Since(start)
 	avgSingleTime := float64(elapsedSingle.Microseconds()) / float64(iterations)
@@ -253,12 +243,11 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 	// We can verify the last output as a sanity check
 	outputTensor := outputsToFill[0] // This is our outputPlaceholder, now filled with data from the last iteration.
 	outputData := outputTensor.GetData()
-
 	if len(outputData) == 0 {
-		log.Fatalf("Output tensor data is empty after benchmark loop")
-		return
+		log.Printf("Warning: Output tensor data is empty after single prediction benchmark loop")
+	} else {
+		fmt.Printf("  Sample predicted value from last iteration (first element): %f\n", outputData[0])
 	}
-	fmt.Printf("  Sample predicted value from last iteration (first element): %f\n", outputData[0])
 
 	// --- Batch Prediction Benchmark Loop ---
 	fmt.Println("  Starting batch prediction benchmark...")
@@ -271,8 +260,6 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 			randomBatchFloat32 = append(randomBatchFloat32, float32(val))
 		}
 	}
-
-	// Shape for a batched input: [batchSize, modelFeatureInputSize]
 	batchInputShape := ort.NewShape(int64(batchSize), int64(modelFeatureInputSize))
 	batchInputTensor, err := ort.NewTensor(batchInputShape, randomBatchFloat32)
 	if err != nil {
@@ -281,40 +268,49 @@ func runCPUONNXBenchmark(onnxModelPath string, flagInputSize, iterations, batchS
 	}
 	defer batchInputTensor.Destroy()
 	fmt.Printf("  Successfully created batch input tensor with shape %v.\n", batchInputShape)
-
 	batchInputTensors := []*ort.Tensor[float32]{batchInputTensor}
 
 	// 2. Prepare a batch output placeholder tensor
-	// For rps_value1.model, output is [batchSize, 1]
-	batchOutputShape := ort.NewShape(int64(batchSize), 1)
+	// NOTE: Assuming policy model output shape [batchSize, 9]
+	batchOutputShape := ort.NewShape(int64(batchSize), 9)
 	batchOutputPlaceholder, err := ort.NewEmptyTensor[float32](batchOutputShape)
 	if err != nil {
 		log.Fatalf("Failed to create batch empty output tensor: %v", err)
 		return
 	}
 	defer batchOutputPlaceholder.Destroy()
-
 	batchOutputsToFill := []*ort.Tensor[float32]{batchOutputPlaceholder}
 
 	// 3. Run batch inference loop
 	startBatch := time.Now()
-	for i := 0; i < iterations; i++ {
+	// Calculate number of batches needed
+	numBatches := iterations / batchSize
+	if iterations%batchSize != 0 {
+		numBatches++
+	}
+	var totalActualPredictions int64 = 0
+
+	for i := 0; i < numBatches; i++ {
 		err = session.Run(batchInputTensors, batchOutputsToFill)
 		if err != nil {
-			log.Fatalf("Failed to run ONNX inference during batch prediction benchmark (iteration %d): %v", i, err)
+			// Simple error handling for now
+			log.Fatalf("Failed to run ONNX inference during batch prediction benchmark (batch %d): %v", i, err)
 			return
 		}
+		totalActualPredictions += int64(batchSize) // Count predictions made
 	}
 	elapsedBatch := time.Since(startBatch)
-	avgBatchTime := float64(elapsedBatch.Microseconds()) / float64(iterations*batchSize)
-	fmt.Printf("  Batch prediction (ONNX): %v total, (avg %.2f µs/prediction/item) for %d iterations of batch size %d\n", elapsedBatch, avgBatchTime, iterations, batchSize)
+	avgBatchTime := float64(elapsedBatch.Microseconds()) / float64(totalActualPredictions)
+	fmt.Printf("  Batch prediction (ONNX): %v total, (avg %.2f µs/prediction/item) over %d batches (%d total predictions)\n", elapsedBatch, avgBatchTime, numBatches, totalActualPredictions)
 
 	// Sanity check the last batch output
 	batchOutputData := batchOutputPlaceholder.GetData()
 	if len(batchOutputData) == 0 {
-		log.Fatalf("Batch output tensor data is empty after benchmark loop")
+		log.Printf("Warning: Batch output tensor data is empty after benchmark loop")
+	} else {
+		// Print first element of the first prediction in the batch
+		fmt.Printf("  Sample predicted value from last batch iteration (first item, first element): %f\n", batchOutputData[0])
 	}
-	fmt.Printf("  Sample predicted value from last batch iteration (first item, first element): %f\n", batchOutputData[0])
 
 	fmt.Println()
 }
@@ -354,18 +350,56 @@ func runGPUBenchmark(addr string, inputSize, hiddenSize, outputSize, iterations,
 	fmt.Println()
 }
 
+// --- NEAT Benchmark Functions ---
+
+// runCPUNEATBenchmark runs CPU benchmarks using a loaded NEAT policy model.
+func runCPUNEATBenchmark(neatPolicyModelPath string, iterations, batchSize int) {
+	fmt.Println("CPU Benchmarks (NEAT Go Network):")
+	if neatPolicyModelPath == "" {
+		fmt.Println("  NEAT policy model path not provided, skipping NEAT CPU benchmark.")
+		fmt.Println()
+		return
+	}
+	fmt.Printf("  Attempting to load NEAT Policy Model Path: %s\n", neatPolicyModelPath)
+
+	// Load the NEAT policy network - THIS IS THE PROBLEMATIC PART
+	// neatNetwork, err := neural.LoadPolicyNetwork(neatPolicyModelPath) // TODO: This is likely the wrong loader for NEAT models
+	// if err != nil {
+	// 	log.Fatalf("Failed to load NEAT policy network from '%s': %v", neatPolicyModelPath, err)
+	// }
+	// fmt.Println("  Successfully loaded NEAT policy network.")
+	// We assume NEAT models don't need explicit Close(), but add if necessary
+	// defer neatNetwork.Close()
+
+	// Infer input size from the loaded network
+	// inputSize := neatNetwork.GetInputSize() // Depends on neatNetwork
+	// if inputSize <= 0 {
+	// 	log.Fatalf("Loaded NEAT network has invalid input size: %d", inputSize)
+	// }
+	// fmt.Printf("  Inferred NEAT Model Input Size: %d\n", inputSize)
+
+	// TODO: Implement benchmarkNEATSingle and benchmarkNEATBatch helpers
+	// TODO: Call helpers and print results
+
+	fmt.Println("  NEAT benchmark implementation pending...") // Placeholder
+
+	fmt.Println()
+}
+
 func main() {
 	// Define command line flags
-	inputSize := flag.Int("input-size", defaultInputSize, "Input layer size for neural networks")
-	hiddenSize := flag.Int("hidden-size", defaultHiddenSize, "Hidden layer size for neural networks")
-	outputSize := flag.Int("output-size", defaultOutputSize, "Output layer size for neural networks")
+	inputSize := flag.Int("input-size", defaultInputSize, "Input layer size for neural networks (used by AdHoc, ignored by ONNX/NEAT)")
+	hiddenSize := flag.Int("hidden-size", defaultHiddenSize, "Hidden layer size for neural networks (used by AdHoc)")
+	outputSize := flag.Int("output-size", defaultOutputSize, "Output layer size for neural networks (used by AdHoc)")
 	iterations := flag.Int("iterations", 1000, "Number of iterations for each benchmark")
 	batchSize := flag.Int("batch-size", 32, "Batch size for batch predictions")
 	tfGpuAddr := flag.String("gpu-addr", defaultTfGpuAddr, "Address of the TensorFlow Python gRPC service (legacy GPU benchmark)")
 	onnxGpuPort := flag.Int("onnx-gpu-port", defaultOnnxGpuPort, "Port for the ONNX Python gRPC service (new GPU benchmark)")
 	onnxModelPath := flag.String("onnx-model", "", "Path to the ONNX model for CPU benchmarks (e.g., ./output/rps_value1.onnx)")
+	neatPolicyModelPath := flag.String("neat-policy-model", "", "Path to the NEAT policy model (.model) for CPU benchmarks")
 	runCPUAdHoc := flag.Bool("run-cpu-adhoc", true, "Run CPU benchmarks with ad-hoc Go network")
 	runCPUONNX := flag.Bool("run-cpu-onnx", true, "Run CPU benchmarks with ONNX model")
+	runCPUNEAT := flag.Bool("run-cpu-neat", true, "Run CPU benchmarks with NEAT model")
 	runGpuTF := flag.Bool("run-gpu-tf", false, "Run GPU benchmarks with the (legacy) TensorFlow Python service")
 	runGpuONNX := flag.Bool("run-gpu-onnx", true, "Run GPU benchmarks with the ONNX Python service")
 
@@ -375,16 +409,25 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	fmt.Printf("Benchmark Configuration:\n")
-	fmt.Printf("  Input Size: %d\n", *inputSize)
-	fmt.Printf("  Hidden Size: %d\n", *hiddenSize)
-	fmt.Printf("  Output Size: %d\n", *outputSize)
 	fmt.Printf("  Iterations: %d\n", *iterations)
 	fmt.Printf("  Batch Size: %d\n", *batchSize)
+	if *runCPUAdHoc {
+		fmt.Printf("  AdHoc Input Size: %d\n", *inputSize)
+		fmt.Printf("  AdHoc Hidden Size: %d\n", *hiddenSize)
+		fmt.Printf("  AdHoc Output Size: %d\n", *outputSize)
+	}
 	if *runCPUONNX {
 		if *onnxModelPath == "" {
 			fmt.Println("  ONNX Model Path for CPU: Not provided (CPU ONNX benchmarks will be skipped)")
 		} else {
 			fmt.Println("  ONNX Model Path for CPU:", *onnxModelPath)
+		}
+	}
+	if *runCPUNEAT {
+		if *neatPolicyModelPath == "" {
+			fmt.Println("  NEAT Policy Model Path for CPU: Not provided (CPU NEAT benchmarks will be skipped)")
+		} else {
+			fmt.Println("  NEAT Policy Model Path for CPU:", *neatPolicyModelPath)
 		}
 	}
 	if *runGpuTF {
@@ -403,6 +446,10 @@ func main() {
 		runCPUONNXBenchmark(*onnxModelPath, *inputSize, *iterations, *batchSize)
 	}
 
+	if *runCPUNEAT {
+		runCPUNEATBenchmark(*neatPolicyModelPath, *iterations, *batchSize)
+	}
+
 	// GPU Benchmarks with TensorFlow service (legacy)
 	if *runGpuTF {
 		runGPUBenchmark(*tfGpuAddr, *inputSize, *hiddenSize, *outputSize, *iterations, *batchSize, false)
@@ -411,11 +458,14 @@ func main() {
 	// GPU Benchmarks with ONNX Python service
 	if *runGpuONNX {
 		onnxGpuServiceAddr := fmt.Sprintf("localhost:%d", *onnxGpuPort)
-		// When calling the ONNX GPU service, the inputSize passed to runGPUBenchmark
-		// is used for data generation. It MUST match the actual input size expected
-		// by the ONNX model loaded in the Python service. The Python service
-		// infers its model's input size directly from the .onnx file.
-		// hiddenSize and outputSize are less critical here as the Python service's model dictates them.
 		runGPUBenchmark(onnxGpuServiceAddr, *inputSize, *hiddenSize, *outputSize, *iterations, *batchSize, true)
 	}
+}
+
+// Helper min function
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

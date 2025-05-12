@@ -1,97 +1,111 @@
 # Neural Rock Paper Scissors
 
-A neural network-based implementation of Rock Paper Scissors using different approaches and languages.
+A neural network-based implementation of Rock Paper Scissors using Go, focused on AlphaGo-style techniques.
 
 ## Overview
 
-This project explores different implementations of neural networks for playing games:
+This project explores AlphaGo-style techniques applied to a strategic card game combining Rock Paper Scissors with board placement. It features:
 
-1. **Legacy C++ Implementation** - The original, fully-functional implementation with complete neural network that learns to play Rock Paper Scissors effectively
-2. **C++ Implementation** - A simplified demonstration version, plus an integrated full neural network
-3. **Golang Implementation** - An improved implementation with better readability, performance, and development setup
-4. **AlphaGo-Style Demos**:
-   - **Tic-Tac-Toe** - A demonstration of AlphaGo-like techniques applied to Tic-Tac-Toe
-   - **RPS Card Game** - A strategic card game combining Rock Paper Scissors with board placement
+- **AlphaGo-Style RPS Card Game**: Implementation using MCTS and neural networks (policy and value networks). Located primarily within the `alphago_demo/` directory.
+- **Core Neural Network Package**: Reusable neural network components (CPU, GPU via gRPC) in the `pkg/neural/` directory.
+- **Various Training and Evaluation Tools**: Including self-play training, ELO tournaments, minimax comparisons, and model analysis utilities within `alphago_demo/cmd/`.
 
 ## Project Organization
 
-The project consists of multiple independent implementations with some integration points:
-
-### Top-Level Structure
+The project uses a single Go module defined at the root (`go.mod`).
 
 ```
 .
-├── legacy_cpp_implementation/ # Original fully-functional C++ implementation with separate include/src
-├── cpp_implementation/        # Simplified C++ demonstration plus full implementation
-├── golang_implementation/     # Go implementation with improved architecture
-├── alphago_demo/              # AlphaGo-style implementations (Tic-Tac-Toe and RPS Card Game)
-├── output/                    # Shared output directory for all implementations
-└── Makefile                   # Top-level makefile with convenience commands for all implementations
+├── alphago_demo/    # AlphaGo-style implementations (RPS Card Game, TicTacToe demo [legacy])
+│   ├── cmd/         # Various command-line entry points (training, tournaments, etc.)
+│   ├── pkg/         # Core game logic, agents, MCTS, analysis for the demo
+│   └── ...
+├── pkg/             # Core shared packages
+│   ├── common/      # Common utilities
+│   ├── neural/      # Neural network implementations (CPU, GPU client)
+│   │   ├── cpu/
+│   │   ├── gpu/
+│   │   └── proto/
+│   └── ...
+├── cmd/             # Root-level commands
+│   └── benchmark/   # Benchmarking tool for CPU/GPU network performance
+├── output/          # Default directory for generated models and results
+├── python/          # Python gRPC service for GPU acceleration (optional)
+├── go.mod           # Go module definition
+├── go.sum           # Go module checksums
+├── README.md        # This file
+└── ...              # Other configuration files
 ```
 
-### Implementation Relationships
+## Getting Started
 
-- The **golang_implementation** and **alphago_demo** packages can interact with each other:
-  - The AlphaGo agent from alphago_demo can be used in golang_implementation tournaments
-  - Both implement different approaches to the RPS game but share common interfaces
+### Building
 
-### Running Commands
-
-The top-level Makefile provides simplified commands for common tasks. Each implementation also has its own Makefile for more detailed operations.
+The project uses Go modules. Ensure you have Go installed (version 1.18 or later recommended).
 
 ```bash
-# Build all implementations
-make build
+# Tidy dependencies (recommended after pulling changes)
+go mod tidy
 
-# Run specific implementations
-make run-legacy-cpp
-make run-cpp
-make run-go
-make run-alphago-ttt
-make run-alphago-rps
+# Build a specific command (example)
+go build ./alphago_demo/cmd/train_models
 
-# AlphaGo-specific tasks
-make alphago-train       # Train AlphaGo RPS models
-make alphago-tournament  # Compare different AlphaGo models
-
-# Golang-specific tasks
-make golang-tournament   # Run tournaments between agents
-make golang-vs-alphago   # Compare Golang and AlphaGo agents
-
-# GPU acceleration tasks
-./start_neural_service.sh  # Start the neural service with GPU acceleration
-./run_benchmark.sh         # Run CPU vs GPU performance benchmarks
+# Build the benchmark tool
+go build ./cmd/benchmark
 ```
 
-### Tournament Systems
+### Running Key Commands
 
-The project includes several sophisticated tournament systems to evaluate and compare different AI agents:
+Use `go run` to execute the main entry points. Some commands require trained models (which can be generated by `train_models`).
+
+```bash
+# Run the benchmark tool (may show errors if GPU service isn't running)
+go run ./cmd/benchmark/main.go
+
+# Run a quick training cycle (generates models in ./output/)
+go run ./alphago_demo/cmd/train_models/main.go -small-run
+
+# Run an ELO tournament (uses models from ./output/)
+# Use -games flag for fewer games during testing
+go run ./alphago_demo/cmd/elo_tournament/main.go -games 2
+
+# Run the interactive RPS card game demo
+# (Trains a temporary model first if none exist)
+go run ./alphago_demo/cmd/rps_card/main.go
+
+# Run the interactive Tic-Tac-Toe demo (legacy)
+go run ./alphago_demo/cmd/tictactoe/main.go
+```
+
+## Tournament Systems
+
+The project includes tournament systems to evaluate and compare different AI agents within the `alphago_demo`.
 
 #### ELO Tournament System
 
-The ELO tournament system is the most comprehensive comparison tool, supporting all agent types:
+Compares discovered models using ELO ratings.
 
 ```bash
-cd alphago_demo
-go run cmd/elo_tournament/main.go [options]
+# Run with default settings (100 games/pair)
+go run ./alphago_demo/cmd/elo_tournament/main.go
+
+# Run with fewer games and verbose output
+go run ./alphago_demo/cmd/elo_tournament/main.go -games 10 -verbose
 ```
 
 Options:
 - `-games <n>`: Number of games per agent pair (default: 100)
 - `-verbose`: Enable detailed output for each game
-- `-cutoff <n>`: ELO threshold to prune underperforming agents (default: 1400)
+- `-cutoff <n>`: ELO threshold to prune underperforming agents (default: 1400, 0 to disable)
 - `-output <file>`: Specify output file for results (default: output/tournament_results.csv)
 - `-top <n>`: Only use top N agents from previous tournament results
 
-This tournament automatically discovers trained models in the output directory and creates a full round-robin tournament with ELO ratings for all agents.
-
 #### Minimax Comparison Tournament
 
-To evaluate neural networks against traditional minimax search algorithms:
+Evaluates neural networks against traditional minimax search.
 
 ```bash
-cd alphago_demo
-go run cmd/tournament_with_minimax/main.go [options]
+go run ./alphago_demo/cmd/tournament_with_minimax/main.go [options]
 ```
 
 Options:
@@ -100,54 +114,48 @@ Options:
 - `-output <file>`: Output file location (default: output/tournament_with_minimax_results.csv)
 - `-max-networks <n>`: Limit number of neural networks of each type (default: 3)
 
-This tournament includes minimax agents at different search depths and compares them against the neural network approaches.
+## Training Entry Points
 
-### Training Entry Points
+Various training commands are available in `alphago_demo/cmd/`.
 
-The project includes several specialized training entry points for different neural network approaches:
+#### AlphaGo-Style Model Training (`train_models`)
 
-#### AlphaGo-Style Model Training
-
-The primary training entry point for AlphaGo-style models with MCTS:
+The primary training entry point for AlphaGo-style models with MCTS.
 
 ```bash
-cd alphago_demo
-go run cmd/train_models/main.go [options]
+go run ./alphago_demo/cmd/train_models/main.go [options]
 ```
 
-This comprehensive trainer offers:
-- Self-play training with MCTS
-- Parallel execution support
-- Comparison of different network sizes
-- Tournament evaluation
+Key Options:
+- `-small-run`: Run with reduced parameters for quick testing.
+- `-method alphago|neat`: Choose training method (default: alphago).
+- `-parallel`: Enable parallel execution.
+- `-threads <n>`: Specify number of threads (0 = auto).
+- `-m1-*`, `-m2-*`: Configure parameters for two different models trained and compared.
+- Run with `-h` to see all options.
 
-It supports two training methods:
-- **AlphaGo**: Neural networks with MCTS (default)
-- **NEAT**: Neuroevolution of Augmenting Topologies
+#### Extended Training for Top Agents (`train_top_agents`)
 
-#### Extended Training for Top Agents
-
-For continuing training of pre-trained models:
+Continues training for pre-trained models found in `output/`. Saves results to `output/extended_training/`.
 
 ```bash
-cd alphago_demo
-go run cmd/train_top_agents/main.go [options]
+go run ./alphago_demo/cmd/train_top_agents/main.go [options]
 ```
 
 Options:
 - `-games <n>`: Self-play games for training (default: 2000)
 - `-sims <n>`: MCTS simulations per move (default: 400)
-- `-tournament-only`: Skip training and run tournament only
-- `-training-only`: Skip tournament and do training only
+- `-tournament-only`: Skip training, run tournament only.
+- `-training-only`: Skip tournament, do training only.
 - `-output <dir>`: Directory for output files (default: output/extended_training)
 
-#### Supervised Learning from Expert Data
+#### Supervised Learning from Expert Data (`train_supervised`)
 
-For training models on existing expert gameplay data:
+Trains models on existing expert gameplay data (CSV format).
 
 ```bash
-cd alphago_demo
-go run cmd/train_supervised/main.go [options]
+# (Requires training_data.csv and validation_data.csv)
+go run ./alphago_demo/cmd/train_supervised/main.go [options]
 ```
 
 Options:
@@ -157,117 +165,51 @@ Options:
 - `-epochs <n>`: Maximum epochs (default: 100)
 - `-patience <n>`: Early stopping patience (default: 10)
 
-#### Training Data Generation
+#### Training Data Generation (`generate_training_data`) (Currently Broken/Legacy)
 
-Generate expert gameplay data using minimax search:
-
-```bash
-cd alphago_demo
-go run cmd/generate_training_data/main.go [options]
-```
-
-Options:
-- `-positions <n>`: Number of positions to generate (default: 10000)
-- `-depth <n>`: Minimax search depth (default: 5)
-- `-time-limit <dur>`: Time limit per move (default: 5s)
-- `-output <file>`: Output file path (default: training_data.json)
-
-### Custom Training via CLI Flags
-
-You can run the trainer directly with custom hyperparameters:
+*Note: This command might be outdated or broken.*
+Generates expert gameplay data using minimax search.
 
 ```bash
-cd alphago_demo
-go build -o bin/train_models cmd/train_models/main.go
-
-# Example: train a larger model with 256 hidden neurons,
-# 2000 self-play games, 20 epochs, 500 MCTS simulations,
-# exploration=1.2, 100 tournament games, on 16 threads:
-./bin/train_models --parallel --threads 16 \
-  --m2-hidden 256 --m2-games 2000 --m2-epochs 20 \
-  --m2-sims 500 --m2-exploration 1.2 \
-  --tournament-games 100
+# Potentially broken
+go run ./alphago_demo/cmd/generate_training_data/main.go [options]
 ```
 
-The available flags are:
+## GPU Acceleration (Optional)
 
-- `--m1-games` (default 100)
-- `--m1-epochs` (default 5)
-- `--m1-hidden` (default 64)
-- `--m1-sims` (default 300)
-- `--m1-exploration` (default 1.5)
-- `--m2-games` (default 1000)
-- `--m2-epochs` (default 10)
-- `--m2-hidden` (default 128)
-- `--m2-sims` (default 200)
-- `--m2-exploration` (default 1.0)
-- `--tournament-games` (default 30)
+This project supports GPU acceleration through an **optional, separately run** Python gRPC service using ONNX Runtime, providing significantly improved performance for neural network inference (used by benchmarks and potentially some agents).
 
-## GPU Acceleration
+### Setup
 
-This project supports GPU acceleration through a Python gRPC service with TensorFlow, providing significantly improved performance in neural network inference and training.
+1.  Navigate to the `python/` directory.
+2.  Set up the Python environment (using `venv` and `pip`):
+    ```bash
+    cd python
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    ```
+    *(Ensure `requirements.txt` lists `onnxruntime-gpu` or the appropriate package for your GPU/CUDA setup).*
+3.  Start the gRPC service:
+    ```bash
+    python neural_service.py
+    ```
 
-### Apple Silicon GPU Acceleration
+### Running Benchmarks with GPU
 
-We use Metal Performance Shaders (MPS) for GPU acceleration on Apple Silicon:
+Once the Python service is running, you can run the Go benchmark tool:
 
 ```bash
-# Set up the Python environment with Metal GPU support
-./python/setup_local_env.sh
-
-# Start the neural service
-./start_neural_service.sh
-
-# Run benchmarks to compare CPU vs GPU performance
-./run_benchmark.sh
+go run ./cmd/benchmark/main.go
 ```
 
-This setup automatically:
-1. Creates a Python virtual environment with `uv`
-2. Installs the appropriate TensorFlow packages for Metal acceleration
-3. Starts a gRPC service that the Go code communicates with
-
-### Custom Benchmark Options
-
-You can customize the benchmark with various options:
-
-```bash
-# Run with larger batch size and more iterations
-./run_benchmark.sh --batch-size=256 --iterations=2000
-
-# Run only CPU or GPU tests
-./run_benchmark.sh --cpu-only
-./run_benchmark.sh --gpu-only
-```
+The benchmark tool will automatically attempt to connect to the service running on `localhost:50054`.
 
 ### Architecture
 
-Our GPU acceleration uses a client-server architecture:
-
-1. **Python gRPC Service**: A Python service that uses TensorFlow with GPU acceleration
-2. **Go gRPC Client**: Go code that communicates with the Python service
-3. **Protocol Buffer Interface**: Common interface definition for communication
-
-This approach provides several advantages:
-- Native GPU acceleration (Metal on Apple Silicon, CUDA on NVIDIA GPUs)
-- Clean separation between Go and Python
-- Efficient batched operations for maximum GPU utilization
-- No complex CGO dependencies or build tags required
-
-### Performance Benefits
-
-With this implementation, batch operations on GPU can be 5-8x faster than CPU for large batches, which significantly improves:
-
-1. MCTS search speed (more positions evaluated per second)
-2. Training throughput (faster neural network updates)
-3. Tournament evaluation (more games per second)
-
-### Documentation
-
-For more detailed information about the GPU acceleration implementation:
-
-- [GPU Acceleration README](README_GPU_ACCELERATION.md): Detailed explanation of the approach
-- [Implementation Summary](IMPLEMENTATION_SUMMARY.md): Overview of key components and benefits
+1.  **Python gRPC Service (`python/neural_service.py`)**: Uses ONNX Runtime for hardware-accelerated inference.
+2.  **Go gRPC Client (`pkg/neural/gpu/`)**: Go code that sends inference requests to the Python service.
+3.  **Protocol Buffer Interface (`pkg/neural/proto/`)**: Defines the gRPC service and message structure.
 
 ## Features
 

@@ -5,7 +5,7 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/zachbeta/neural_rps/alphago_demo/pkg/neural"
+	neural "github.com/zachbeta/neural_rps/alphago_demo/pkg/rps_net_impl"
 )
 
 // Genome represents a candidate solution with policy and value network weights.

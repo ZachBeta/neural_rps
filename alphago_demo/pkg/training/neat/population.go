@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/zachbeta/neural_rps/alphago_demo/pkg/neural"
+	neural "github.com/zachbeta/neural_rps/alphago_demo/pkg/rps_net_impl"
 )
 
 // Population manages a NEAT population over generations.

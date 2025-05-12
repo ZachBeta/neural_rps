@@ -1,5 +1,0 @@
-Tournament: AlphaGo Small vs AlphaGo Large
-Games: 10
-AlphaGo Small wins: 5 (50.0%)
-AlphaGo Large wins: 5 (50.0%)
-Draws: 0 (0.0%)

@@ -1,0 +1,10 @@
+Agent,ELO,Wins,Losses,Draws,Win%
+Random,1532,3,1,0,75.0%
+AlphaGo-64_g10_e3_20250512-115952,1497,2,2,0,50.0%
+AlphaGo-128_g20_e6_20250512-115952,1471,1,3,0,25.0%
+
+Head-to-Head Results:
+Agent 1,Agent 2,Agent 1 Wins,Agent 2 Wins,Draws
+Random,AlphaGo-64_g10_e3_20250512-115952,1,1,0
+Random,AlphaGo-128_g20_e6_20250512-115952,2,0,0
+AlphaGo-64_g10_e3_20250512-115952,AlphaGo-128_g20_e6_20250512-115952,1,1,0

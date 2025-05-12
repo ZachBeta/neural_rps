@@ -9,7 +9,7 @@ import (
 
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/agents"
 	"github.com/zachbeta/neural_rps/alphago_demo/pkg/game"
-	"github.com/zachbeta/neural_rps/alphago_demo/pkg/neural"
+	neural "github.com/zachbeta/neural_rps/alphago_demo/pkg/rps_net_impl"
 )
 
 func main() {

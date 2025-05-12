@@ -1,8 +1,6 @@
 package neat
 
-import (
-	"github.com/zachbeta/neural_rps/alphago_demo/pkg/neural"
-)
+import neural "github.com/zachbeta/neural_rps/alphago_demo/pkg/rps_net_impl"
 
 // Train runs the NEAT algorithm and produces a policy and value network.
 func Train(cfg Config, parallel bool, threads int) (*neural.RPSPolicyNetwork, *neural.RPSValueNetwork) {
